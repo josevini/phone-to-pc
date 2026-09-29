@@ -18,7 +18,7 @@ Android.
 | Path | Contents |
 |------|----------|
 | [`spec/`](spec/) | Protocol spec (source of truth) |
-| [`linux/`](linux/) | Rust workspace: `clipsync-core` (sans-IO protocol) and `clipsyncd` (daemon) |
+| [`linux/`](linux/) | Rust workspace: `clipsync-core` (sans-IO protocol), `clipsync-ffi` (its Kotlin bindings) and `clipsyncd` (daemon) |
 | [`handbook/`](handbook/README.md) | Architecture, architecture decisions, development |
 
 ## Trying it

@@ -56,7 +56,7 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - name: Tests with coverage
         run: cargo llvm-cov --workspace --cobertura --output-path coverage.xml
-      - name: Diff coverage (clipsync-core, 100% of new/changed lines)
+      - name: Diff coverage (clipsync-core and clipsync-ffi, 100% of new/changed lines)
         run: |
           pipx run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100 \
             --exclude '*/clipsyncd/*'

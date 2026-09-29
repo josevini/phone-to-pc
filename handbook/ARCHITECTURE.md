@@ -34,6 +34,7 @@ There is no Android app yet.
 |------|----------|
 | `spec/protocol.md` | Protocol v1 draft: identity, discovery, transport, messages, ordering, pairing |
 | `linux/crates/clipsync-core/` | Protocol logic with no I/O |
+| `linux/crates/clipsync-ffi/` | UniFFI layer over `clipsync-core`, and the `uniffi-bindgen` that generates its Kotlin bindings |
 | `linux/crates/clipsyncd/` | The daemon binary |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
 | `linux/dist/clipsyncd.service` | systemd user unit |
@@ -68,6 +69,20 @@ so the Android app can call it through UniFFI unchanged.
 
 `tests/spec.rs` holds known-answer tests for every deterministic rule of the spec, one test per area;
 `tests/engine.rs` drives two engines against each other through the public API.
+
+## `clipsync-ffi`: crossing to Kotlin
+
+A thin layer that exports `clipsync-core` through UniFFI for the Android app. It decides nothing itself:
+
+- Device IDs and tokens cross as hex strings, addresses as `SocketAddress { ip, port }` records; malformed input is a
+  `CoreError`.
+- `Engine` wraps the core's engine in a mutex, so Kotlin can call it from any thread; `poll_outputs` drains every
+  queued output in one call.
+- Free functions cover what the app needs outside a session: `parse_pair_uri`, `format_sas`, `device_id_from_spki`,
+  `short_id`, `is_valid_name`, `txt_properties`, `peer_from_service`, `instance_name` and the discovery and transport
+  constants.
+- `uniffi.toml` puts the bindings in the Kotlin package `io.github.josevini.clipsync.core`; the crate's
+  `uniffi-bindgen` binary generates them from the built library.
 
 ## `clipsyncd`: doing
 

@@ -37,7 +37,8 @@ The suites:
 | Suite | What it runs |
 |-------|--------------|
 | `clipsync-core` unit tests, `tests/spec.rs`, `tests/engine.rs` | The protocol core: known-answer tests for the spec, and two engines driven against each other |
-| `clipsyncd` unit tests | Storage, TLS (including impersonation), discovery parsing, the control protocol, notifications |
+| `clipsync-ffi` unit tests, `tests/engine.rs`, `tests/helpers.rs`, `tests/bindgen.rs` | The UniFFI layer: every type crossing the boundary, two engines driven through the exported API, and Kotlin bindings generated from the built library |
+| `clipsyncd` unit tests | Storage, TLS (including impersonation), the control protocol, notifications |
 | `tests/daemon.rs`, `tests/ipc.rs`, `tests/cli.rs` | Real daemons over loopback TLS with in-memory clipboards, driven through their handle, the control socket and the `clipsync` binary |
 | `tests/wayland.rs` | The Wayland backend against headless Sway |
 | `tests/binary.rs` | The `clipsyncd` binary on headless Sway, including two daemons on two compositors paired from the CLI |
@@ -49,7 +50,7 @@ cargo llvm-cov --workspace --cobertura --output-path coverage.xml   # ignored by
 pipx run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100 --exclude '*/clipsyncd/*'
 ```
 
-Diff coverage applies to `clipsync-core` only; `clipsyncd`'s coverage is
+Diff coverage applies to `clipsync-core` and `clipsync-ffi`; `clipsyncd`'s coverage is
 measured but not held to a threshold, which does not exempt it from tests.
 
 ## Running the daemon

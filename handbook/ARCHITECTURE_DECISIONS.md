@@ -35,13 +35,20 @@ APK.
 
 Costs accepted: the NDK, `cargo-ndk` and binding generation in the Android
 build and CI; a linker flag for the 16 KB page alignment Android 15+ requires;
-an F-Droid recipe that builds Rust; debugging across the FFI boundary.
+an F-Droid recipe that builds Rust; debugging across the FFI boundary. UniFFI is
+MPL-2.0, the only dependency that is not permissively licensed: its copyleft
+applies per file, clipsync uses those files unmodified, and the app carries its
+licence notice, so clipsync stays MIT. `deny.toml` allows MPL-2.0 for UniFFI's
+crates only.
 
 Consequences:
 
 - The public API of `clipsync-core` stays FFI-friendly: plain data types and
   enums across the boundary, errors as enums, no generics or lifetimes in
   exported items, synchronous calls, no I/O callbacks.
+- The UniFFI annotations live in a separate crate, `clipsync-ffi`, which
+  translates the core's types (hex strings for IDs, a mutex around the engine)
+  and decides nothing. The core and the daemon build without UniFFI.
 - Kotlin holds only platform code: TLS and the Keystore, NSD, the foreground
   service, the clipboard and the UI.
 

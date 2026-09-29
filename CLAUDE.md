@@ -77,8 +77,9 @@ Intended distribution channels; this list does not imply that packages or releas
   enums, no generics or lifetimes in exported items, synchronous calls, no I/O callbacks.
 - Peer to peer only: devices talk directly, one daemon plus one CLI per Linux machine, with no server or cloud
   component.
-- Dependencies must have licences compatible with distributing clipsync under MIT (permissive licences only);
-  `cargo-deny` enforces this for Rust and checks RustSec advisories and crate sources.
+- Dependencies must have licences compatible with distributing clipsync under MIT (permissive licences only). The one
+  exception is UniFFI's crates (MPL-2.0, see D2), used unmodified. `cargo-deny` enforces this for Rust and checks
+  RustSec advisories and crate sources.
 - The Wayland backend runs its event loop on a dedicated thread; offer reads and paste serving run on short-lived
   threads. Never read an offer that carries our own marker MIME type: this process serves it, so it would deadlock.
 - Add automated tests appropriate to each behaviour change, including code that needs a compositor, the network or
@@ -139,12 +140,12 @@ required.
 ## CI/CD
 
 - Every push to any branch runs: `rustfmt` check, `clippy` with warnings as errors, the test suite with coverage, diff
-  coverage (`diff-cover` against `cargo llvm-cov`'s report: new/changed lines of `clipsync-core` must be 100% covered,
-  not just the project average), and `cargo-deny`. Pull requests reuse the checks of their head commit. When nothing
-  but Markdown changed (a branch compared with `main` as a whole), the checks are skipped, and a skipped check counts as
-  passed.
-- Diff coverage applies to `clipsync-core`; `clipsyncd`'s coverage is measured but not held to a threshold. That does
-  not waive the requirement to test its behaviour changes.
+  coverage (`diff-cover` against `cargo llvm-cov`'s report: new/changed lines of `clipsync-core` and `clipsync-ffi`
+  must be 100% covered, not just the project average), and `cargo-deny`. Pull requests reuse the checks of their head
+  commit. When nothing but Markdown changed (a branch compared with `main` as a whole), the checks are skipped, and a
+  skipped check counts as passed.
+- Diff coverage applies to `clipsync-core` and `clipsync-ffi`; `clipsyncd`'s coverage is measured but not held to a
+  threshold. That does not waive the requirement to test its behaviour changes.
 - The Wayland tests start private headless Sway instances, so CI installs `sway` and `wl-clipboard`.
 - Protection of `main`:
   - Nobody deletes `main` or force-pushes to it.
