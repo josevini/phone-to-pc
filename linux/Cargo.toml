@@ -1,0 +1,15 @@
+[workspace]
+resolver = "3"
+members = ["crates/clipsync-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/josevini/phone-to-pc"
+rust-version = "1.87"
+# Distributed as binaries and distro packages, not on crates.io.
+publish = false
+
+[workspace.dependencies]
+clipsync-core = { path = "crates/clipsync-core" }

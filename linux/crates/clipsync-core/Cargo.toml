@@ -1,0 +1,19 @@
+[package]
+name = "clipsync-core"
+description = "Sans-IO protocol core for clipsync: framing, messages, pairing, clip ordering"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+hex = "0.4.3"
+rand = "0.10.3"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.11.0"
+thiserror = "2.0.21"
+url = "2.5.8"
+
