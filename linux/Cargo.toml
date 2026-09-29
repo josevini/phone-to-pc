@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/clipsync-core"]
+members = ["crates/clipsync-core", "crates/clipsyncd"]
 
 [workspace.package]
 version = "0.1.0"
