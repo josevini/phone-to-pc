@@ -48,12 +48,21 @@ the Android app share it through UniFFI, doing its own I/O around it (see
 |--------|----------------|
 | `message.rs` | Message types (`hello`, `clip`, `ack`, `ping`, `pair_*`, …) and the validation rules of spec §5 |
 | `frame.rs` | Length-prefixed JSON framing; `FrameDecoder` takes bytes as they arrive and yields messages |
+| `engine.rs` | `Engine`: the protocol state of every connection (spec §5–§7) — hello checks, sessions, clips and acks, keepalive, the duplicate-connection rule, token and SAS pairing, unpairing |
 | `clip.rs` | `ClipTracker`: Lamport ordering and echo suppression (spec §6), deciding emit / apply / ignore |
 | `pairing.rs` | SAS commitment and 6-digit code (spec §7.3), pairing URI parse/format (spec §8) |
 | `identity.rs` | `DeviceId` (SHA-256 of the public key's SPKI) and device-name rules |
 | `hex.rs` | Fixed-size byte arrays carried as hex strings |
 
-`tests/spec.rs` holds known-answer tests for every deterministic rule of the spec, one test per area.
+The host drives `Engine` with plain calls (`connection_opened`, `bytes_received`, `connection_closed`,
+`local_clipboard_changed`, `confirm_pairing`, `tick`) and passes the current time in; it carries out the `Output`s
+the engine queues: bytes to send, connections to close, text to put on the clipboard, and events to show or persist
+(peers connecting, pairing codes, devices paired or unpaired). The engine trusts nothing but the device ID the host
+reads from the peer's TLS certificate. Its API uses plain data and enums, with no generics, lifetimes or callbacks,
+so the Android app can call it through UniFFI unchanged.
+
+`tests/spec.rs` holds known-answer tests for every deterministic rule of the spec, one test per area;
+`tests/engine.rs` drives two engines against each other through the public API.
 
 ## `clipsyncd`: doing
 

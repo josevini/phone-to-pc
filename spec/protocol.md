@@ -168,7 +168,8 @@ bytes of `origin` (equivalent to comparing the lowercase hex strings).
    Both reply `ack applied: true`.
 
 A device MUST NOT forward clips whose `origin` is another device (no relaying in
-v1). Clips are not queued for peers that are offline.
+v1), and a receiver MUST treat a clip whose `origin` is not the sender's device
+ID as a protocol error. Clips are not queued for peers that are offline.
 
 Clipboard backends SHOULD also recognise their own writes directly (e.g. by
 offering a private MIME type) so that echo suppression does not rely only on
@@ -201,7 +202,8 @@ dialer                                        acceptor
 
 - Either side MAY dial. If two established connections exist for the same
   pair, keep the one whose TLS **client** has the smaller device ID and close
-  the other without an `error`.
+  the other without an `error`. Between two connections from the same client,
+  keep the newer one.
 - Dial triggers: the peer appears in mDNS, a manual address is configured, or
   the previous connection dropped. Retry with exponential backoff from 1 s up
   to 60 s.
@@ -224,6 +226,9 @@ Used when one device can scan a code shown by the other (phone ↔ anything).
    The connection continues as an established session.
 5. On mismatch: `error bad_token` and close. After 3 failures the acceptor
    leaves pairing mode. When not in pairing mode: `error pairing_closed`.
+6. Pairing mode ends after one successful pairing, by either method. When it
+   ends, connections from unknown devices still waiting to send `pair_request`
+   get `error pairing_closed` and are closed.
 
 The QR code is the authenticated channel for the acceptor's key; the token
 proves that the dialer saw the QR code. The acceptor MUST tell its user which

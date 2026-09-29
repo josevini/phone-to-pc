@@ -6,6 +6,7 @@
 //! do its own I/O around it.
 
 pub mod clip;
+pub mod engine;
 pub mod frame;
 pub mod hex;
 pub mod identity;
