@@ -61,7 +61,12 @@ async fn run() -> Result<()> {
     })?;
     info!(protocol = clipboard.protocol(), "clipboard backend ready");
 
+    let socket = dirs.socket();
     let handle = spawn_daemon(dirs, config, identity, Arc::new(clipboard), events).await?;
+    if let Err(e) = clipsyncd::ipc::serve(&socket, handle.clone()).await {
+        handle.shutdown().await;
+        return Err(e);
+    }
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     tokio::select! {
         _ = tokio::signal::ctrl_c() => handle.shutdown().await,

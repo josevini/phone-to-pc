@@ -40,7 +40,26 @@ pipx run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100 -
 `clipsyncd` is excluded because its Wayland code needs a running compositor.
 This excludes it from the diff coverage threshold, not from automated testing.
 
-## Trying the daemon
+## Running the daemon
+
+`cargo run -p clipsyncd` runs the daemon on your real clipboard, with your real identity and state under
+`~/.local/share/clipsync`. To try it without touching those, point it at scratch directories, and give each extra
+daemon its own port:
+
+```sh
+# The compositor's socket lives in the real runtime dir: pin it before moving XDG_RUNTIME_DIR.
+export WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+export XDG_DATA_HOME=/tmp/cs-a/data XDG_CONFIG_HOME=/tmp/cs-a/config XDG_RUNTIME_DIR=/tmp/cs-a/run
+mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME/clipsync" && chmod 700 "$XDG_RUNTIME_DIR"
+echo 'port = 47900' > "$XDG_CONFIG_HOME/clipsync/config.toml"
+cargo run -p clipsyncd &
+cargo run -p clipsyncd --bin clipsync -- status   # the CLI finds the daemon through the same variables
+```
+
+Two daemons on the same desktop share one clipboard: a copy reaches the other daemon both through the compositor and
+over the network. That exercises echo suppression, but it is not how two machines behave.
+
+## Trying the clipboard backend
 
 The debug commands act on the **real clipboard** of the running session.
 Use a separate compositor session with a disposable clipboard when one is

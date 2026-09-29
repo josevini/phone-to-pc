@@ -44,7 +44,14 @@ pub struct DaemonConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DaemonEvent {
     Engine(Event),
-    DialFailed { addrs: Vec<SocketAddr>, error: String },
+    DialFailed {
+        addrs: Vec<SocketAddr>,
+        error: String,
+    },
+    /// A connection this device dialed to pair is up; later events name it by `conn`.
+    PairingConnection {
+        conn: ConnId,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +59,8 @@ pub struct Status {
     pub id: DeviceId,
     pub name: String,
     pub port: u16,
+    /// Addresses other devices can reach this one on.
+    pub addrs: Vec<SocketAddr>,
     pub pairing: bool,
     pub devices: Vec<DeviceStatus>,
 }
@@ -321,6 +330,9 @@ impl Actor {
                     target.delay = RETRY_MIN;
                 }
                 self.writers.insert(conn, writer);
+                if intent != Intent::Session {
+                    let _ = self.events.send(DaemonEvent::PairingConnection { conn });
+                }
                 self.engine.connection_opened(conn, role, peer, intent, now);
             }
             Cmd::Bytes { conn, bytes } => self.engine.bytes_received(conn, &bytes, now),
@@ -476,7 +488,8 @@ impl Actor {
             .map(|p| DeviceStatus { id: p.id, name: p.name.clone(), connected: self.engine.is_connected(&p.id) })
             .collect();
         let (id, name) = (self.me.id, self.me.name.clone());
-        Status { id, name, port: self.local.port(), pairing: self.engine.pairing_active(now), devices }
+        let (port, addrs) = (self.local.port(), advertised_addrs(self.local));
+        Status { id, name, port, addrs, pairing: self.engine.pairing_active(now), devices }
     }
 
     fn invite(&self, token: clipsync_core::Hex16) -> Result<PairingInvite> {

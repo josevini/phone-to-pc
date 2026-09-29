@@ -3,9 +3,9 @@
 What the code does **today**. The reasoning behind choices lives in
 [Architecture decisions](ARCHITECTURE_DECISIONS.md), and the wire protocol in [`spec/protocol.md`](../spec/protocol.md).
 
-Current state: the Linux daemon syncs the clipboard with paired devices over mutual TLS, pairs by QR token or by
-comparing codes, and finds paired devices with mDNS, but nothing drives pairing from the outside yet (no control socket
-or `clipsync` CLI), and there is no Android app.
+Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired devices over mutual TLS and finds them
+with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text and unpairs.
+There is no Android app yet.
 
 ## Big picture
 
@@ -76,6 +76,8 @@ so the Android app can call it through UniFFI unchanged.
 | `daemon/net.rs` | Accepting and dialing TLS connections, and moving bytes between sockets and the actor |
 | `tls.rs` | TLS 1.3 client and server configurations; the peer's device ID from its certificate |
 | `discovery.rs` | mDNS: advertises `_clipsync._tcp` with the device ID, reports paired devices it finds to the daemon |
+| `ipc.rs` | The control socket: newline-delimited JSON requests and replies, server and client |
+| `bin/clipsync.rs` | The `clipsync` CLI: status, devices, pairing, send, unpair |
 | `clipboard/mod.rs` | The `Clipboard` trait and backend-neutral events: `Text`, `Skipped { reason }`, `OwnershipLost`, `Closed` |
 | `clipboard/wayland.rs` | Wayland data-control backend |
 | `clipboard/memory.rs` | In-memory backend, used by the tests |
@@ -122,6 +124,18 @@ so the Android app can call it through UniFFI unchanged.
 - When the clipboard backend stops (the compositor went away), the daemon stops with an error, so its supervisor can
   restart it. `SIGINT` and `SIGTERM` stop it cleanly.
 - It listens on every IPv6 and IPv4 address (`[::]`), or on IPv4 only where IPv6 is unavailable.
+
+### Control socket
+
+- `$XDG_RUNTIME_DIR/clipsync.sock`, mode `0600`. A daemon refuses to start while another one answers there, and
+  replaces a socket file left by one that died.
+- One JSON object per line. Requests carry `cmd` (`status`, `pair_start`, `pair_stop`, `pair_uri`, `pair_address`,
+  `confirm`, `send`, `unpair`); replies carry `type`. Each request gets one reply.
+- The pairing requests keep the connection streaming the pairing's progress (`pairing_code`, `paired`,
+  `pairing_failed`, `pairing_ended`); the client answers a `pairing_code` with `confirm` on the same connection. For a
+  pairing this device dialed, only the events of that connection are streamed. Closing the connection that opened
+  pairing mode closes it.
+- `unpair` accepts a device name, full ID or unique ID prefix (4+ characters).
 
 ### Files
 

@@ -4,5 +4,6 @@
 pub mod clipboard;
 pub mod daemon;
 pub mod discovery;
+pub mod ipc;
 pub mod storage;
 pub mod tls;

@@ -10,8 +10,8 @@ Android.
   secrets are never sent.
 - **Focused**: only the clipboard, with native Wayland support.
 
-> **Status: early development.** The protocol spec and the Linux clipboard
-> backend exist; networking, pairing and the Android app do not yet.
+> **Status: early development.** Linux devices pair and sync their clipboards; the
+> Android app does not exist yet.
 
 ## Repository layout
 
@@ -21,20 +21,21 @@ Android.
 | [`linux/`](linux/) | Rust workspace: `clipsync-core` (sans-IO protocol) and `clipsyncd` (daemon) |
 | [`handbook/`](handbook/README.md) | Architecture, architecture decisions, development |
 
-## Trying the current state
+## Trying it
 
-You need a Wayland compositor with data-control (Hyprland, Sway, KDE Plasma) and
-a recent Rust toolchain.
+You need a Wayland compositor with data-control (Hyprland, Sway, KDE Plasma) and a
+recent Rust toolchain.
 
 ```sh
 cd linux
-cargo test                                    # core, including the spec's known-answer tests
-cargo run -p clipsyncd -- watch --show-text   # log clipboard changes as the daemon sees them
-cargo run -p clipsyncd -- set "hello"         # own the clipboard until another app copies
+cargo install --path crates/clipsyncd   # installs clipsyncd and clipsync
+clipsyncd &                             # the daemon, on your real clipboard
+clipsync pair                           # on one PC: shows a QR code and its URI
+clipsync pair 'clipsync://pair?…'       # on the other PC: pairs with it
 ```
 
-These act on your real clipboard. See [Development](handbook/DEVELOPMENT.md) for manual testing, coverage
-and the other checks CI runs.
+See the [handbook](handbook/README.md) for the flows, and
+[Development](handbook/DEVELOPMENT.md) for building, testing and trying it safely.
 
 ## License
 

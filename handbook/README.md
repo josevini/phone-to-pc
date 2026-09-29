@@ -20,5 +20,11 @@ the behaviour that was intended, and the code is the bug.
 - [Development](DEVELOPMENT.md) — toolchain, building and testing, trying the
   daemon on a real clipboard, and reproducing CI locally.
 
-User-facing flows (pairing, syncing a copy, unpairing) get a page each under
-`flows/` as they ship.
+## Flows
+
+- [Pairing](flows/pairing.md) — with a QR code or its URI, or by comparing codes.
+- [Syncing the clipboard](flows/syncing.md) — what is synced, and sending text from
+  the terminal.
+- [Devices](flows/devices.md) — status, connecting, unpairing.
+
+New user-facing flows get a page here as they ship.

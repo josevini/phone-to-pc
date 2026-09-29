@@ -17,6 +17,7 @@ clipsync-core.workspace = true
 if-addrs = "0.15.0"
 mdns-sd = "0.21.4"
 pem = "3"
+qrcode = { version = "0.14.1", default-features = false }
 rand = "0.10.3"
 rcgen = "0.14.7"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
