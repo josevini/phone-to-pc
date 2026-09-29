@@ -129,8 +129,9 @@ required.
   not just the project average), and `cargo-deny`. Pull requests reuse the checks of their head commit. When nothing
   but Markdown changed (a branch compared with `main` as a whole), the checks are skipped, and a skipped check counts as
   passed.
-- Diff coverage excludes `clipsyncd`, whose Wayland code needs a running compositor. This exclusion does not waive
-  the requirement to test its behaviour changes.
+- Diff coverage applies to `clipsync-core`; `clipsyncd`'s coverage is measured but not held to a threshold. That does
+  not waive the requirement to test its behaviour changes.
+- The Wayland tests start private headless Sway instances, so CI installs `sway` and `wl-clipboard`.
 - Protection of `main`:
   - Nobody deletes `main` or force-pushes to it.
   - `main` only receives commits on which all of the above already passed. Nobody bypasses this.
