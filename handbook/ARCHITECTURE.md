@@ -3,8 +3,9 @@
 What the code does **today**. The reasoning behind choices lives in
 [Architecture decisions](ARCHITECTURE_DECISIONS.md), and the wire protocol in [`spec/protocol.md`](../spec/protocol.md).
 
-Current state: the Linux side can watch and set the clipboard and decide what it would send, but
-there is no networking, pairing or Android app yet.
+Current state: the Linux daemon syncs the clipboard with paired devices over mutual TLS and pairs by QR token or by
+comparing codes, but nothing drives pairing from the outside yet (no control socket or `clipsync` CLI), devices are
+reached only at configured addresses (no mDNS), and there is no Android app.
 
 ## Big picture
 
@@ -13,16 +14,18 @@ there is no networking, pairing or Android app yet.
      (the contract clipsync-core implements)
                        │
                        ▼
-   ┌───────────────────────────────────────┐
-   │ linux/ (Rust)                         │
-   │                                       │
-   │ clipsyncd (daemon)                    │
-   │   clipboard/wayland.rs ◄──────────────┼── Hyprland / Sway / KDE
-   │   main.rs (watch, set)                │   (data-control)
-   │        │ asks "what now?"             │
-   │        ▼                              │
-   │ clipsync-core (sans-IO logic)         │
-   └───────────────────────────────────────┘
+   ┌───────────────────────────────────────────────────┐
+   │ clipsyncd                                          │
+   │                                                    │
+   │  clipboard/wayland.rs ──events──►┌──────────────┐  │      TLS 1.3
+   │  (Hyprland, Sway, KDE)◄─set_text─│ daemon actor │◄─┼──► paired devices
+   │                                  │  owns Engine │  │   (daemon/net.rs,
+   │  storage/ ◄── paired devices, ───│              │  │    tls.rs)
+   │   lamport, identity              └──────┬───────┘  │
+   │                                         │ asks     │
+   │                                         ▼          │
+   │                         clipsync-core (sans-IO)    │
+   └───────────────────────────────────────────────────┘
 ```
 
 ## Repository layout
@@ -68,9 +71,13 @@ so the Android app can call it through UniFFI unchanged.
 
 | Module | Responsibility |
 |--------|----------------|
-| `main.rs` | CLI. `watch` logs what would be sent to peers; `set` puts text on the clipboard and serves it |
-| `clipboard/mod.rs` | Backend-neutral events: `Text`, `Skipped { reason }`, `OwnershipLost`, `Closed` |
+| `main.rs` | `clipsyncd` (or `clipsyncd run`) runs the daemon; `watch` and `set` exercise the clipboard backend alone |
+| `daemon/mod.rs` | The runtime: the actor that owns the `Engine`, and `DaemonHandle` to drive it |
+| `daemon/net.rs` | Accepting and dialing TLS connections, and moving bytes between sockets and the actor |
+| `tls.rs` | TLS 1.3 client and server configurations; the peer's device ID from its certificate |
+| `clipboard/mod.rs` | The `Clipboard` trait and backend-neutral events: `Text`, `Skipped { reason }`, `OwnershipLost`, `Closed` |
 | `clipboard/wayland.rs` | Wayland data-control backend |
+| `clipboard/memory.rs` | In-memory backend, used by the tests |
 | `storage/` | The files kept between runs (see [Files](#files)) |
 
 ### Wayland backend
@@ -91,6 +98,25 @@ so the Android app can call it through UniFFI unchanged.
 - Text is read as `text/plain;charset=utf-8`, `UTF8_STRING` or `text/plain`, in that order of preference, and
   offered under the same types `wl-copy` uses.
 
+### Runtime
+
+- **One actor** (a tokio task) owns the `Engine`, the persisted `State` and the connections' writers. Everything else
+  sends it `Cmd`s: connections (opened, bytes, closed), dial failures, clipboard events, and control requests through
+  `DaemonHandle` (status, pairing, sending text, unpairing, shutdown). It carries out the engine's outputs and
+  re-broadcasts its events to subscribers.
+- **Connections**: the accept loop and each dial run the TLS handshake (10 s limit; TCP connect 5 s), then hand the
+  actor the peer's device ID from its certificate. A dial that reaches a device other than the one expected is dropped.
+  Per connection, one task reads and forwards bytes; another writes what the actor queues. The actor closes a
+  connection by dropping its writer, which also stops the reader.
+- **Reconnecting**: every configured peer address is dialed until its device is connected. Failed dials back off from
+  1 s to 60 s; a disconnection restarts the schedule at 1 s. The actor drives the engine's timers once a second.
+- **State**: paired devices are saved when paired, renamed or unpaired; the Lamport counter whenever it moves.
+- The clipboard content already there when the daemon starts is not sent; later changes are (see D10 in
+  [Architecture decisions](ARCHITECTURE_DECISIONS.md)).
+- When the clipboard backend stops (the compositor went away), the daemon stops with an error, so its supervisor can
+  restart it. `SIGINT` and `SIGTERM` stop it cleanly.
+- It listens on every IPv6 and IPv4 address (`[::]`), or on IPv4 only where IPv6 is unavailable.
+
 ### Files
 
 | File | Contents |
@@ -98,18 +124,21 @@ so the Android app can call it through UniFFI unchanged.
 | `$XDG_DATA_HOME/clipsync/identity.key` | The device's EC P-256 private key (PKCS#8 PEM). The device ID is derived from it, so it is never regenerated: a damaged key is an error |
 | `$XDG_DATA_HOME/clipsync/identity.crt` | Self-signed certificate for that key; reissued for the same key when missing or not matching it |
 | `$XDG_DATA_HOME/clipsync/state.json` | Paired devices and the Lamport counter |
-| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses to dial besides the ones found with mDNS) |
+| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses of devices to dial) |
 
 Directories are created `0700` and files written `0600`, atomically (temporary file and rename). Without
 `XDG_DATA_HOME` or `XDG_CONFIG_HOME`, the defaults under `$HOME` apply; `XDG_RUNTIME_DIR` is required.
 
 ## Flow of one copy
 
-What happens today when you copy text while `clipsyncd watch` runs:
+What happens when you copy text on a device paired with another one:
 
 1. The compositor sends a new selection offer to the data-control device.
 2. `wayland.rs` checks its MIME types (own? secret? text?), reads the text on a helper thread and emits
    `ClipboardEvent::Text`.
-3. `main.rs` passes it to `ClipTracker::local_change`, which returns `Emit(clip)` with the next sequence number, or
-   `Unchanged` if it is the same content as the last known clip (an echo or a re-copy).
-4. `watch` logs "would send clip". Nothing is sent over the network yet.
+3. The actor passes it to `Engine::local_clipboard_changed`, which gives it the next sequence number and queues a
+   `clip` frame for every connected paired device, or does nothing when it is the same content as the last known clip
+   (an echo or a re-copy).
+4. The actor writes the frame to each connection; TLS carries it to the peer.
+5. On the peer, the engine checks the clip's ordering (spec §6) and queues `SetClipboard`; the actor hands the text to
+   its backend, which serves it and ignores the change it caused. The peer acknowledges with `ack`.

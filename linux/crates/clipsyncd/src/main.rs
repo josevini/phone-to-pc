@@ -1,10 +1,9 @@
-//! clipsync daemon.
-//!
-//! It exposes the clipboard backend through two debug commands; networking and
-//! pairing are not implemented yet.
+//! clipsync daemon: `clipsyncd` (or `clipsyncd run`) runs it; `watch` and `set` exercise
+//! the clipboard backend on its own.
 
 use std::io::Read;
-use std::sync::mpsc;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::sync::{Arc, mpsc};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, bail};
@@ -14,16 +13,21 @@ use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
 use clipsyncd::clipboard::{ClipboardEvent, WaylandClipboard};
+use clipsyncd::daemon::{self, DaemonConfig};
+use clipsyncd::storage::config::default_device_name;
+use clipsyncd::storage::{Config, Dirs, Identity};
 
 #[derive(Parser)]
 #[command(version, about = "Share the clipboard between paired devices")]
 struct Cli {
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// Run the daemon (the default).
+    Run,
     /// Watch the clipboard and log what would be sent to peers.
     Watch {
         /// Also print a preview of the copied text.
@@ -40,10 +44,52 @@ fn main() -> Result<()> {
         .with_writer(std::io::stderr)
         .init();
 
-    match Cli::parse().command {
+    match Cli::parse().command.unwrap_or(Command::Run) {
+        Command::Run => tokio::runtime::Runtime::new()?.block_on(run()),
         Command::Watch { show_text } => watch(show_text),
         Command::Set { text } => set(text),
     }
+}
+
+async fn run() -> Result<()> {
+    let dirs = Dirs::from_env()?;
+    let config = Config::load(&dirs.config_file(), default_device_name)?;
+    let identity = Identity::load_or_create(&dirs.data)?;
+    let (tx, events) = tokio::sync::mpsc::unbounded_channel();
+    let clipboard = WaylandClipboard::spawn(move |event| {
+        let _ = tx.send(event);
+    })?;
+    info!(protocol = clipboard.protocol(), "clipboard backend ready");
+
+    let handle = spawn_daemon(dirs, config, identity, Arc::new(clipboard), events).await?;
+    let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => handle.shutdown().await,
+        _ = terminate.recv() => handle.shutdown().await,
+        _ = handle.stopped() => bail!("the daemon stopped (see the log above)"),
+    }
+    Ok(())
+}
+
+/// Listens on every IPv6 and IPv4 address, or only IPv4 where IPv6 is unavailable.
+async fn spawn_daemon(
+    dirs: Dirs,
+    config: Config,
+    identity: Identity,
+    clipboard: Arc<WaylandClipboard>,
+    events: tokio::sync::mpsc::UnboundedReceiver<ClipboardEvent>,
+) -> Result<daemon::DaemonHandle> {
+    let port = config.port;
+    let any_v6 = SocketAddr::from((Ipv6Addr::UNSPECIFIED, port));
+    let listen = match std::net::TcpListener::bind(any_v6) {
+        Ok(probe) => {
+            drop(probe);
+            any_v6
+        }
+        Err(_) => SocketAddr::from((Ipv4Addr::UNSPECIFIED, port)),
+    };
+    let cfg = DaemonConfig { dirs, config, identity, platform: "linux".into(), listen, advertise: true };
+    daemon::spawn(cfg, clipboard, events).await
 }
 
 fn watch(show_text: bool) -> Result<()> {

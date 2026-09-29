@@ -2,5 +2,6 @@
 //! The `clipsyncd` and `clipsync` binaries are thin wrappers around it.
 
 pub mod clipboard;
+pub mod daemon;
 pub mod storage;
 pub mod tls;

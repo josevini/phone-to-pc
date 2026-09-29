@@ -112,3 +112,14 @@ Rejected: **language-neutral JSON test vectors with a generator.** They pay off
 when several implementations must agree; with a single shared core (D2) they
 would only add a third language and a third place to change on every protocol
 change.
+
+## D10 — The clipboard at startup is not sent
+
+When the daemon starts, whatever is already on the clipboard stays local; only
+later changes are sent. Sending it would let a restart, a login or a crash
+recovery on one device overwrite what the user just copied on another, with
+nothing the user did to cause it. Copying the same text again is a new copy and
+is sent.
+
+Rejected: **sending it once the first peer connects** — the same surprise,
+only later.
