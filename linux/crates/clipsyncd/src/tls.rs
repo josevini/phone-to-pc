@@ -24,7 +24,7 @@ use crate::storage::Identity;
 use crate::storage::identity::device_id_from_cert;
 
 /// ALPN protocol ID (spec §4).
-pub const ALPN: &[u8] = b"clipsync/1";
+pub const ALPN: &[u8] = clipsync_core::discovery::ALPN.as_bytes();
 
 /// Client and server configurations for one identity.
 #[derive(Clone)]

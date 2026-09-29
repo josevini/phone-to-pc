@@ -11,6 +11,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow};
 use clipsync_core::DeviceId;
+use clipsync_core::discovery::is_link_local_v6;
 use clipsync_core::engine::{ConnId, Engine, Event, Intent, LocalChange, LocalDevice, Output, PairedDevice, Role};
 use clipsync_core::pairing::PairUri;
 use tokio::net::TcpListener;
@@ -18,7 +19,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{debug, info, warn};
 
 use crate::clipboard::{Clipboard, ClipboardEvent};
-use crate::discovery::{Discovery, is_link_local_v6};
+use crate::discovery::Discovery;
 use crate::storage::state::PairedRecord;
 use crate::storage::{Config, Dirs, Identity, State};
 use crate::tls::Tls;

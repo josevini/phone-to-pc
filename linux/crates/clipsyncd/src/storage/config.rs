@@ -4,11 +4,9 @@ use std::net::SocketAddr;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
+use clipsync_core::discovery::DEFAULT_PORT;
 use clipsync_core::identity::{MAX_NAME_LEN, is_valid_name};
 use serde::Deserialize;
-
-/// Default TCP port (spec §3).
-pub const DEFAULT_PORT: u16 = 47823;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {

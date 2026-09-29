@@ -56,6 +56,7 @@ the Android app share it through UniFFI, doing its own I/O around it (see
 | `clip.rs` | `ClipTracker`: Lamport ordering and echo suppression (spec §6), deciding emit / apply / ignore |
 | `pairing.rs` | SAS commitment and 6-digit code (spec §7.3), pairing URI parse/format (spec §8) |
 | `identity.rs` | `DeviceId` (SHA-256 of the public key's SPKI) and device-name rules |
+| `discovery.rs` | Discovery and transport constants (service type, default port, TXT keys, ALPN) and how to read a browsed service (spec §3) |
 | `hex.rs` | Fixed-size byte arrays carried as hex strings |
 
 The host drives `Engine` with plain calls (`connection_opened`, `bytes_received`, `connection_closed`,
@@ -76,7 +77,7 @@ so the Android app can call it through UniFFI unchanged.
 | `daemon/mod.rs` | The runtime: the actor that owns the `Engine`, and `DaemonHandle` to drive it |
 | `daemon/net.rs` | Accepting and dialing TLS connections, and moving bytes between sockets and the actor |
 | `tls.rs` | TLS 1.3 client and server configurations; the peer's device ID from its certificate |
-| `discovery.rs` | mDNS: advertises `_clipsync._tcp` with the device ID, reports paired devices it finds to the daemon |
+| `discovery.rs` | mDNS with `mdns-sd`: advertises `_clipsync._tcp` with the device ID, reports paired devices it finds to the daemon; the core's `discovery` module decides what a browsed service means |
 | `ipc.rs` | The control socket: newline-delimited JSON requests and replies, server and client |
 | `bin/clipsync.rs` | The `clipsync` CLI: status, devices, pairing, send, unpair |
 | `notify.rs` | Desktop notifications for pairing, unpairing and pairing codes |
