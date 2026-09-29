@@ -47,7 +47,7 @@ Devices advertise a DNS-SD service on the LAN via mDNS:
 | Field         | Value                                    |
 |---------------|------------------------------------------|
 | Service type  | `_clipsync._tcp.local.`                  |
-| Instance name | the device name (mDNS may add a suffix)  |
+| Instance name | device name + ` (` + short ID + `)`      |
 | Port          | the TCP port the device listens on       |
 | TXT `v`       | `1` (protocol version)                   |
 | TXT `id`      | device ID (64 hex chars)                 |

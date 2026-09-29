@@ -27,6 +27,15 @@ impl Node {
     }
 
     async fn launch(dirs: &Dirs, name: &str, peers: Vec<SocketAddr>) -> (DaemonHandle, MemoryClipboard) {
+        Self::launch_with(dirs, name, peers, false).await
+    }
+
+    async fn launch_with(
+        dirs: &Dirs,
+        name: &str,
+        peers: Vec<SocketAddr>,
+        advertise: bool,
+    ) -> (DaemonHandle, MemoryClipboard) {
         let identity = Identity::load_or_create(&dirs.data).unwrap();
         let config = Config { name: name.into(), port: 0, peers };
         let (clipboard, events) = MemoryClipboard::new();
@@ -35,8 +44,8 @@ impl Node {
             config,
             identity,
             platform: "linux".into(),
-            listen: "127.0.0.1:0".parse().unwrap(),
-            advertise: false,
+            listen: if advertise { "0.0.0.0:0".parse().unwrap() } else { "127.0.0.1:0".parse().unwrap() },
+            advertise,
         };
         let handle = daemon::spawn(cfg, std::sync::Arc::new(clipboard.clone()), events).await.unwrap();
         (handle, clipboard)
@@ -190,4 +199,58 @@ async fn the_daemon_stops_when_the_clipboard_backend_stops() {
     let a = Node::start("alpha", vec![]).await;
     a.clipboard.close("compositor went away");
     tokio::time::timeout(Duration::from_secs(5), a.handle.stopped()).await.expect("daemon still running");
+}
+
+#[tokio::test]
+async fn a_paired_device_found_on_the_network_is_dialed() {
+    let (mut a, b) = (Node::start("alpha", vec![]).await, Node::start("beta", vec![]).await);
+    pair_with_token(&a, &b).await;
+    a.restart("alpha", vec![]).await;
+    let (a_id, b_id) = (a.id().await, b.id().await);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(!a.connected_to(&b_id).await, "nothing tells a where b is yet");
+
+    a.handle.discovered(b_id, vec![b.addr().await]);
+    eventually("reconnected", || async { a.connected_to(&b_id).await && b.connected_to(&a_id).await }).await;
+}
+
+#[tokio::test]
+async fn an_unpaired_device_found_on_the_network_is_not_dialed() {
+    let (a, b) = (Node::start("alpha", vec![]).await, Node::start("beta", vec![]).await);
+    let mut b_events = b.handle.subscribe();
+    a.handle.discovered(b.id().await, vec![b.addr().await]);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let mut saw_connection = false;
+    while let Ok(event) = b_events.try_recv() {
+        saw_connection |= matches!(event, DaemonEvent::Engine(Event::ConnectionClosed { .. }));
+    }
+    assert!(!saw_connection, "a must not even try");
+}
+
+/// Uses real multicast on the local network, which CI runners may not allow.
+#[tokio::test]
+#[ignore = "needs mDNS multicast on the local network"]
+async fn paired_devices_find_each_other_with_mdns() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dirs = |n: &str| Dirs { data: tmp.path().join(n), config: tmp.path().join(n), runtime: tmp.path().into() };
+    let (a_dirs, b_dirs) = (dirs("a"), dirs("b"));
+    let (a, _a_clip) = Node::launch_with(&a_dirs, "alpha", vec![], true).await;
+    let (b, _b_clip) = Node::launch_with(&b_dirs, "beta", vec![], true).await;
+    let invite = b.start_pairing().await.unwrap();
+    a.pair_with_uri(&invite.uri).await.unwrap();
+    let (a_id, b_id) = (a.status().await.id, b.status().await.id);
+    let connected = |h: &DaemonHandle, peer: DeviceId| {
+        let h = h.clone();
+        async move { h.status().await.devices.iter().any(|d| d.id == peer && d.connected) }
+    };
+    eventually("paired", || async { connected(&a, b_id).await && connected(&b, a_id).await }).await;
+
+    // Restart a with no configured peers: only mDNS can tell it where b is.
+    a.shutdown().await;
+    let (a, _a_clip) = Node::launch_with(&a_dirs, "alpha", vec![], true).await;
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while !(connected(&a, b_id).await && connected(&b, a_id).await) {
+        assert!(Instant::now() < deadline, "not reconnected through mDNS");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
 }

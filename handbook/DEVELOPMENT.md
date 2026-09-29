@@ -27,6 +27,9 @@ cargo llvm-cov --workspace                   # coverage table; --open for the HT
 cargo deny check                             # advisories, licences, sources (deny.toml)
 ```
 
+One test is ignored by default because it needs mDNS multicast on the local network, which CI runners may not
+allow. Run it with `cargo test -p clipsyncd --test daemon -- --ignored`.
+
 Diff coverage, as CI computes it:
 
 ```sh

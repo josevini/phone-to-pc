@@ -5,7 +5,7 @@
 mod net;
 
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -18,6 +18,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{debug, info, warn};
 
 use crate::clipboard::{Clipboard, ClipboardEvent};
+use crate::discovery::{Discovery, is_link_local_v6};
 use crate::storage::state::PairedRecord;
 use crate::storage::{Config, Dirs, Identity, State};
 use crate::tls::Tls;
@@ -89,6 +90,10 @@ pub(crate) enum Cmd {
         addrs: Vec<SocketAddr>,
         error: String,
     },
+    Discovered {
+        id: DeviceId,
+        addrs: Vec<SocketAddr>,
+    },
     Clipboard(ClipboardEvent),
     Status(oneshot::Sender<Status>),
     StartPairing(oneshot::Sender<Result<PairingInvite>>),
@@ -159,6 +164,12 @@ impl DaemonHandle {
         let _ = self.ask(Cmd::Shutdown).await;
     }
 
+    /// Reports device `id` reachable at `addrs`, as found by mDNS. Paired devices are dialed
+    /// there until connected; anything else is ignored.
+    pub fn discovered(&self, id: DeviceId, addrs: Vec<SocketAddr>) {
+        let _ = self.cmds.send(Cmd::Discovered { id, addrs });
+    }
+
     /// Resolves when the daemon has stopped.
     pub async fn stopped(&self) {
         self.cmds.closed().await;
@@ -219,7 +230,21 @@ pub async fn spawn(
         targets,
     };
     info!(id = %cfg.identity.id.short(), name = %cfg.config.name, %local, "clipsync daemon started");
-    tokio::spawn(actor.run(rx));
+    let discovery = if cfg.advertise {
+        match Discovery::start(cfg.identity.id, &cfg.config.name, local.port(), handle.clone()) {
+            Ok(discovery) => Some(discovery),
+            Err(e) => {
+                warn!("mDNS unavailable, only configured peers will be dialed: {e:#}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    tokio::spawn(async move {
+        actor.run(rx).await;
+        drop(discovery);
+    });
     Ok(handle)
 }
 
@@ -313,6 +338,13 @@ impl Actor {
                     }
                 }
                 let _ = self.events.send(DaemonEvent::DialFailed { addrs, error });
+            }
+            Cmd::Discovered { id, addrs } => {
+                // Remember where every device is; `redial` only dials the paired ones.
+                for addr in addrs {
+                    self.targets.entry(addr).or_insert_with(|| Target::new(Some(id))).device = Some(id);
+                }
+                self.redial();
             }
             Cmd::Clipboard(event) => self.on_clipboard(event, now),
             Cmd::Status(reply) => {
@@ -478,10 +510,6 @@ fn advertised_addrs(local: SocketAddr) -> Vec<SocketAddr> {
         .collect();
     addrs.sort_by_key(|a| a.is_ipv6());
     addrs
-}
-
-fn is_link_local_v6(ip: &IpAddr) -> bool {
-    matches!(ip, IpAddr::V6(v6) if (v6.segments()[0] & 0xffc0) == 0xfe80)
 }
 
 fn now_ms() -> u64 {

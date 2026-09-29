@@ -3,9 +3,9 @@
 What the code does **today**. The reasoning behind choices lives in
 [Architecture decisions](ARCHITECTURE_DECISIONS.md), and the wire protocol in [`spec/protocol.md`](../spec/protocol.md).
 
-Current state: the Linux daemon syncs the clipboard with paired devices over mutual TLS and pairs by QR token or by
-comparing codes, but nothing drives pairing from the outside yet (no control socket or `clipsync` CLI), devices are
-reached only at configured addresses (no mDNS), and there is no Android app.
+Current state: the Linux daemon syncs the clipboard with paired devices over mutual TLS, pairs by QR token or by
+comparing codes, and finds paired devices with mDNS, but nothing drives pairing from the outside yet (no control socket
+or `clipsync` CLI), and there is no Android app.
 
 ## Big picture
 
@@ -75,6 +75,7 @@ so the Android app can call it through UniFFI unchanged.
 | `daemon/mod.rs` | The runtime: the actor that owns the `Engine`, and `DaemonHandle` to drive it |
 | `daemon/net.rs` | Accepting and dialing TLS connections, and moving bytes between sockets and the actor |
 | `tls.rs` | TLS 1.3 client and server configurations; the peer's device ID from its certificate |
+| `discovery.rs` | mDNS: advertises `_clipsync._tcp` with the device ID, reports paired devices it finds to the daemon |
 | `clipboard/mod.rs` | The `Clipboard` trait and backend-neutral events: `Text`, `Skipped { reason }`, `OwnershipLost`, `Closed` |
 | `clipboard/wayland.rs` | Wayland data-control backend |
 | `clipboard/memory.rs` | In-memory backend, used by the tests |
@@ -108,7 +109,12 @@ so the Android app can call it through UniFFI unchanged.
   actor the peer's device ID from its certificate. A dial that reaches a device other than the one expected is dropped.
   Per connection, one task reads and forwards bytes; another writes what the actor queues. The actor closes a
   connection by dropping its writer, which also stops the reader.
-- **Reconnecting**: every configured peer address is dialed until its device is connected. Failed dials back off from
+- **Discovery**: the daemon advertises `_clipsync._tcp` (instance `name (short id)`, TXT `v=1` and `id`) with
+  `mdns-sd`, and browses for other devices. A paired device found there is dialed at every address it advertises,
+  except IPv6 link-local ones, which need an interface scope; unpaired devices are ignored. Without mDNS (no
+  multicast), the daemon keeps working with configured peers only.
+- **Reconnecting**: every configured peer address, and every address where a paired device was found, is dialed until
+  its device is connected. Failed dials back off from
   1 s to 60 s; a disconnection restarts the schedule at 1 s. The actor drives the engine's timers once a second.
 - **State**: paired devices are saved when paired, renamed or unpaired; the Lamport counter whenever it moves.
 - The clipboard content already there when the daemon starts is not sent; later changes are (see D10 in
@@ -124,7 +130,7 @@ so the Android app can call it through UniFFI unchanged.
 | `$XDG_DATA_HOME/clipsync/identity.key` | The device's EC P-256 private key (PKCS#8 PEM). The device ID is derived from it, so it is never regenerated: a damaged key is an error |
 | `$XDG_DATA_HOME/clipsync/identity.crt` | Self-signed certificate for that key; reissued for the same key when missing or not matching it |
 | `$XDG_DATA_HOME/clipsync/state.json` | Paired devices and the Lamport counter |
-| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses of devices to dial) |
+| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses to dial besides the ones found with mDNS) |
 
 Directories are created `0700` and files written `0600`, atomically (temporary file and rename). Without
 `XDG_DATA_HOME` or `XDG_CONFIG_HOME`, the defaults under `$HOME` apply; `XDG_RUNTIME_DIR` is required.
