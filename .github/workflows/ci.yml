@@ -1,0 +1,71 @@
+name: CI
+
+# Every push to any branch; pull requests reuse the checks of their head commit.
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        name: Anything besides Markdown changed?
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # A branch is compared with main as a whole; main is compared with what it pointed to before the push.
+          if [ "$GITHUB_REF_NAME" = main ]; then base="$BEFORE"; else base=$(git merge-base origin/main HEAD); fi
+          if ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo "code=true" >> "$GITHUB_OUTPUT"   # new history or unknown base: run everything
+            exit 0
+          fi
+          if git diff --name-only "$base" HEAD | grep -qvE '\.md$'; then code=true; else code=false; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  rust:
+    name: Rust
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: linux
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: linux
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - name: Tests with coverage
+        run: cargo llvm-cov --workspace --cobertura --output-path coverage.xml
+      - name: Diff coverage (clipsync-core, 100% of new/changed lines)
+        run: |
+          pipx run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100 \
+            --exclude '*/clipsyncd/*'
+
+  cargo-deny:
+    name: Dependency audit
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: linux/Cargo.toml
