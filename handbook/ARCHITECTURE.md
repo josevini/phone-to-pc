@@ -122,6 +122,8 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 | `KeystoreIdentity.kt` | The EC P-256 key in the Android Keystore (alias `clipsync-identity`) and the self-signed certificate the Keystore issues for it |
 | `Discovery.kt` | `NsdManager`: advertises `_clipsync._tcp` with the core's instance name and TXT properties, and reports resolved services to the node through the core's `peer_from_service` (Android 14+ follows each service; older versions resolve one at a time) |
 | `Sync.kt` | The running node as the UI sees it: a status `StateFlow` and an event `SharedFlow` |
+| `SendActivity.kt` | "Send to devices" in the text-selection menu (`ACTION_PROCESS_TEXT`): an activity with no window that hands the selected text to the node on a worker thread and reports the outcome in a toast |
+| `SendOutcome.kt` | `send`: sends text through the running node, only while a paired device is connected, and maps the core's `LocalChange` to what the user is told |
 | `Pairing.kt` | `PairingTracker`: follows one QR pairing through the node's events to success or a failure the user can act on |
 | `QrDecoder.kt` | Reads a QR code from a camera frame's luminance plane with ZXing, dark on light or light on dark |
 | `DeviceName.kt` | The device name: the user's choice, or the phone's model cut to 64 bytes |

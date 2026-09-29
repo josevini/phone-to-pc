@@ -11,6 +11,17 @@
     </plurals>
     <string name="notification_stop">Stop</string>
 
+    <string name="send_to_devices">Send to devices</string>
+    <plurals name="sent_to">
+        <item quantity="one">Sent to %d device</item>
+        <item quantity="other">Sent to %d devices</item>
+    </plurals>
+    <string name="send_not_running">Not sent: clipboard sharing is stopped. Open clipsync to start it.</string>
+    <string name="send_no_device">Not sent: no paired device is connected.</string>
+    <string name="send_unchanged">Not sent: this is the text last sent or received.</string>
+    <string name="send_empty">Nothing to send.</string>
+    <string name="send_too_large">Not sent: text over 1 MiB is not synced.</string>
+
     <string name="about">About</string>
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
