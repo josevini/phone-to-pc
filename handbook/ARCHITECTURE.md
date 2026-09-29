@@ -87,6 +87,8 @@ so the Android app can call it through UniFFI unchanged.
 
 ### Wayland backend
 
+- Connects to the compositor named by `WAYLAND_DISPLAY`; `WaylandClipboard::spawn_on` takes an explicit socket path
+  instead, which the tests use to run against a private headless Sway.
 - Binds `ext_data_control_manager_v1`, or `zwlr_data_control_manager_v1` if the compositor lacks it. Both protocols
   are identical apart from their names, so one implementation serves both (`Proto<Ext, Wlr>` plus a dispatch macro).
 - Threads:

@@ -63,11 +63,22 @@ impl WaylandClipboard {
     /// Connects to the compositor and starts watching the clipboard. `on_event`
     /// is called from backend threads.
     pub fn spawn(on_event: impl Fn(ClipboardEvent) + Send + Sync + 'static) -> Result<Self> {
+        Self::spawn_on(None, on_event)
+    }
+
+    /// Like [`WaylandClipboard::spawn`], on the compositor socket at `display` instead of the
+    /// one named by `WAYLAND_DISPLAY`.
+    pub fn spawn_on(
+        display: Option<&std::path::Path>,
+        on_event: impl Fn(ClipboardEvent) + Send + Sync + 'static,
+    ) -> Result<Self> {
+        let display = display.map(|p| p.to_path_buf());
         let (commands, channel) = channel::channel();
         let (ready_tx, ready_rx) = mpsc::channel();
         let sink: EventSink = Arc::new(on_event);
-        let thread =
-            thread::Builder::new().name("wayland-clipboard".into()).spawn(move || run(sink, channel, ready_tx))?;
+        let thread = thread::Builder::new()
+            .name("wayland-clipboard".into())
+            .spawn(move || run(display, sink, channel, ready_tx))?;
         match ready_rx.recv() {
             Ok(Ok(protocol)) => Ok(Self { commands, thread: Some(thread), protocol }),
             Ok(Err(e)) => {
@@ -98,12 +109,17 @@ impl Drop for WaylandClipboard {
     }
 }
 
-fn run(sink: EventSink, commands: Channel<Command>, ready: mpsc::Sender<Result<&'static str>>) {
+fn run(
+    display: Option<std::path::PathBuf>,
+    sink: EventSink,
+    commands: Channel<Command>,
+    ready: mpsc::Sender<Result<&'static str>>,
+) {
     let mut event_loop = match EventLoop::<State>::try_new() {
         Ok(l) => l,
         Err(e) => return drop(ready.send(Err(e.into()))),
     };
-    let mut state = match State::connect(sink.clone(), event_loop.get_signal()) {
+    let mut state = match State::connect(display.as_deref(), sink.clone(), event_loop.get_signal()) {
         Ok((state, conn, queue)) => {
             let handle = event_loop.handle();
             let inserted = WaylandSource::new(conn, queue)
@@ -241,8 +257,19 @@ struct State {
 }
 
 impl State {
-    fn connect(sink: EventSink, signal: LoopSignal) -> Result<(Self, Connection, wayland_client::EventQueue<Self>)> {
-        let conn = Connection::connect_to_env().context("cannot connect to the Wayland compositor")?;
+    fn connect(
+        display: Option<&std::path::Path>,
+        sink: EventSink,
+        signal: LoopSignal,
+    ) -> Result<(Self, Connection, wayland_client::EventQueue<Self>)> {
+        let conn = match display {
+            None => Connection::connect_to_env().context("cannot connect to the Wayland compositor")?,
+            Some(path) => {
+                let socket = std::os::unix::net::UnixStream::connect(path)
+                    .with_context(|| format!("cannot connect to the Wayland compositor at {}", path.display()))?;
+                Connection::from_socket(socket).context("cannot connect to the Wayland compositor")?
+            }
+        };
         let (globals, queue) = registry_queue_init::<State>(&conn).context("wayland registry")?;
         let qh = queue.handle();
         let seat: WlSeat = globals.bind(&qh, 1..=1, ()).context("the compositor has no seat")?;
