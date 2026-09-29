@@ -36,6 +36,7 @@ There is no Android app yet.
 | `linux/crates/clipsync-core/` | Protocol logic with no I/O |
 | `linux/crates/clipsync-ffi/` | UniFFI layer over `clipsync-core`, and the `uniffi-bindgen` that generates its Kotlin bindings |
 | `linux/crates/clipsyncd/` | The daemon binary |
+| `android/` | Gradle build of the Android side: `bindings` (generated Kotlin), `session` (the protocol host in plain Kotlin) |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
 | `linux/dist/clipsyncd.service` | systemd user unit |
 | `handbook/` | This file, the architecture decisions, development setup, user flows |
@@ -83,6 +84,33 @@ A thin layer that exports `clipsync-core` through UniFFI for the Android app. It
   constants.
 - `uniffi.toml` puts the bindings in the Kotlin package `io.github.josevini.clipsync.core`; the crate's
   `uniffi-bindgen` binary generates them from the built library.
+
+## `android/`: the phone's side
+
+A Gradle build with JDK-only modules, so everything but the Android platform code runs and is tested on the JVM.
+
+| Module | Responsibility |
+|--------|----------------|
+| `bindings` | The Kotlin bindings, generated at build time from the host build of `clipsync-ffi` (`cargoBuildHost`, `generateBindings`); no hand-written code |
+| `session` | The protocol host in plain Kotlin, the counterpart of the daemon's runtime: `Node`, `Tls`, `Identity`, `FileStateStore` |
+
+`session`:
+
+- **`Node`** owns the `Engine`, the saved state and the connections. Like the daemon's actor, one thread (the actor)
+  makes every engine call and state change; socket threads hand their work to it. It carries out the engine's
+  outputs (bytes to write, connections to close, text for the clipboard callback) and reports events to a listener.
+- **Connections**: a server socket accepts, each dial tries the addresses in order (TCP connect 5 s, TLS handshake
+  10 s), and a dial for a known device (a QR code's, or a saved address's) is dropped when another device answers.
+  One thread reads each connection, and a per-connection writer thread writes in order and closes after the pending
+  writes.
+- **Reconnecting**: where a paired device was reached or found by discovery is a target, dialed while that device
+  is not connected, with the daemon's backoff (1 s to 60 s, restarted by a disconnection). The targets of paired
+  devices are saved with them, so a restarted node dials them again without discovery.
+- **`Tls`**: TLS 1.3 through JSSE, mutual certificates, ALPN `clipsync/1`, any certificate accepted and the peer's
+  device ID read from its public key. The key manager takes the private key as a handle, so an Android Keystore key
+  is used without leaving the Keystore.
+- **`FileStateStore`**: paired devices (with their addresses) and the Lamport counter in one JSON file, replaced
+  atomically; a damaged file is an error.
 
 ## `clipsyncd`: doing
 

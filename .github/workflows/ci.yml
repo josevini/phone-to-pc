@@ -61,6 +61,29 @@ jobs:
           pipx run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100 \
             --exclude '*/clipsyncd/*'
 
+  android:
+    name: Android
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: linux
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compositor and clipboard tools for the interop test
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sway wl-clipboard
+      - run: ./gradlew lintKotlin :session:test
+
   cargo-deny:
     name: Dependency audit
     needs: changes

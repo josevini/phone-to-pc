@@ -11,6 +11,7 @@ see [Architecture](ARCHITECTURE.md).
 - To run the tests: `sway` and `wl-clipboard` (`wl-copy`, `wl-paste`). The
   Wayland tests start a private headless Sway per test, with its own runtime
   directory and clipboard, so they never touch your desktop session.
+- For `android/`: JDK 21, and the Android SDK with its NDK (see [Android](#android)).
 - Tools CI also runs, needed only to reproduce its checks locally:
   - `cargo-llvm-cov`, plus `rustup component add llvm-tools-preview`;
   - `cargo-deny`;
@@ -52,6 +53,31 @@ pipx run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100 -
 
 Diff coverage applies to `clipsync-core` and `clipsync-ffi`; `clipsyncd`'s coverage is
 measured but not held to a threshold, which does not exempt it from tests.
+
+## Android
+
+`android/` is a Gradle build; run it with JDK 21 (`JAVA_HOME`) and the Android SDK in `ANDROID_HOME` or
+`android/local.properties` (`sdk.dir=…`, ignored by git). From `android/`:
+
+```sh
+./gradlew :session:test        # JVM tests, including the interop test against clipsyncd
+./gradlew lintKotlin           # ktlint; formatKotlin fixes what it can
+```
+
+Gradle builds what the tests need through Cargo: `clipsync-ffi` for this machine (the bindings are generated from it
+and the JVM tests load it) and `clipsyncd`.
+
+The suites of `session`:
+
+| Suite | What it runs |
+|-------|--------------|
+| `TlsTest` | Mutual TLS between two identities; refusing a client without a certificate, a peer without ALPN, an impostor |
+| `FileStateStoreTest` | Saving and loading the state |
+| `NodeTest` | Two nodes on loopback: QR pairing, syncing both ways, reconnecting after a restart, unpairing, refused tokens and forged QR codes |
+| `InteropTest` | A node against the real `clipsyncd` on a private headless Sway: pairing with `clipsync pair`'s URI, then a Wayland copy reaching the node and text from the node reaching the Wayland clipboard |
+
+The test identities are PKCS#12 files made with `keytool` (EC P-256, self-signed, password `testing`) in
+`session/src/test/resources/identities/`; `TlsTest` pins their device IDs as computed by `openssl`.
 
 ## Running the daemon
 

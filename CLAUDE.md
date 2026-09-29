@@ -141,12 +141,13 @@ required.
 
 - Every push to any branch runs: `rustfmt` check, `clippy` with warnings as errors, the test suite with coverage, diff
   coverage (`diff-cover` against `cargo llvm-cov`'s report: new/changed lines of `clipsync-core` and `clipsync-ffi`
-  must be 100% covered, not just the project average), and `cargo-deny`. Pull requests reuse the checks of their head
-  commit. When nothing but Markdown changed (a branch compared with `main` as a whole), the checks are skipped, and a
-  skipped check counts as passed.
+  must be 100% covered, not just the project average), `cargo-deny`, and for `android/` ktlint and the JVM tests. Pull
+  requests reuse the checks of their head commit. When nothing but Markdown changed (a branch compared with `main` as
+  a whole), the checks are skipped, and a skipped check counts as passed.
 - Diff coverage applies to `clipsync-core` and `clipsync-ffi`; `clipsyncd`'s coverage is measured but not held to a
   threshold. That does not waive the requirement to test its behaviour changes.
-- The Wayland tests start private headless Sway instances, so CI installs `sway` and `wl-clipboard`.
+- The Wayland tests and the Android interop test start private headless Sway instances, so CI installs `sway` and
+  `wl-clipboard`.
 - Protection of `main`:
   - Nobody deletes `main` or force-pushes to it.
   - `main` only receives commits on which all of the above already passed. Nobody bypasses this.
