@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/josevini/phone-to-pc"
-rust-version = "1.87"
+rust-version = "1.88"
 # Distributed as binaries and distro packages, not on crates.io.
 publish = false
 

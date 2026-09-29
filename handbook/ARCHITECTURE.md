@@ -71,6 +71,7 @@ so the Android app can call it through UniFFI unchanged.
 | `main.rs` | CLI. `watch` logs what would be sent to peers; `set` puts text on the clipboard and serves it |
 | `clipboard/mod.rs` | Backend-neutral events: `Text`, `Skipped { reason }`, `OwnershipLost`, `Closed` |
 | `clipboard/wayland.rs` | Wayland data-control backend |
+| `storage/` | The files kept between runs (see [Files](#files)) |
 
 ### Wayland backend
 
@@ -89,6 +90,18 @@ so the Android app can call it through UniFFI unchanged.
   content, text over 1 MiB, invalid UTF-8. The primary selection (middle click) is ignored.
 - Text is read as `text/plain;charset=utf-8`, `UTF8_STRING` or `text/plain`, in that order of preference, and
   offered under the same types `wl-copy` uses.
+
+### Files
+
+| File | Contents |
+|------|----------|
+| `$XDG_DATA_HOME/clipsync/identity.key` | The device's EC P-256 private key (PKCS#8 PEM). The device ID is derived from it, so it is never regenerated: a damaged key is an error |
+| `$XDG_DATA_HOME/clipsync/identity.crt` | Self-signed certificate for that key; reissued for the same key when missing or not matching it |
+| `$XDG_DATA_HOME/clipsync/state.json` | Paired devices and the Lamport counter |
+| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses to dial besides the ones found with mDNS) |
+
+Directories are created `0700` and files written `0600`, atomically (temporary file and rename). Without
+`XDG_DATA_HOME` or `XDG_CONFIG_HOME`, the defaults under `$HOME` apply; `XDG_RUNTIME_DIR` is required.
 
 ## Flow of one copy
 

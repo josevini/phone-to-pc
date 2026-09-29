@@ -3,8 +3,6 @@
 //! It exposes the clipboard backend through two debug commands; networking and
 //! pairing are not implemented yet.
 
-mod clipboard;
-
 use std::io::Read;
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -15,7 +13,7 @@ use clipsync_core::{ClipTracker, DeviceId, Hex32, LocalOutcome};
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
-use crate::clipboard::{ClipboardEvent, WaylandClipboard};
+use clipsyncd::clipboard::{ClipboardEvent, WaylandClipboard};
 
 #[derive(Parser)]
 #[command(version, about = "Share the clipboard between paired devices")]

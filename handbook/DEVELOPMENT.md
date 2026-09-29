@@ -5,7 +5,7 @@ see [Architecture](ARCHITECTURE.md).
 
 ## Requirements
 
-- Rust stable through `rustup` (the workspace needs 1.87 or newer).
+- Rust stable through `rustup` (the workspace needs 1.88 or newer).
 - To run the daemon: a Wayland compositor with data-control (Hyprland, Sway,
   KDE Plasma). `wl-clipboard` (`wl-copy`, `wl-paste`) is handy for manual
   tests.
