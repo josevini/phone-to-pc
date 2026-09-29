@@ -13,3 +13,11 @@ publish = false
 
 [workspace.dependencies]
 clipsync-core = { path = "crates/clipsync-core" }
+
+# The native library of the Android app: small, with panics still unwinding so UniFFI can turn them into exceptions.
+[profile.android]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

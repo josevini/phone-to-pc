@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "clipsync"
 
-include(":bindings", ":session")
+include(":bindings", ":session", ":app")

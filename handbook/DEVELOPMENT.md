@@ -11,7 +11,8 @@ see [Architecture](ARCHITECTURE.md).
 - To run the tests: `sway` and `wl-clipboard` (`wl-copy`, `wl-paste`). The
   Wayland tests start a private headless Sway per test, with its own runtime
   directory and clipboard, so they never touch your desktop session.
-- For `android/`: JDK 21, and the Android SDK with its NDK (see [Android](#android)).
+- For `android/`: JDK 21, the Android SDK with platform 37 and NDK 29.0.14206865, the Rust targets
+  `aarch64-linux-android` and `x86_64-linux-android`, and `cargo-ndk` (see [Android](#android)).
 - Tools CI also runs, needed only to reproduce its checks locally:
   - `cargo-llvm-cov`, plus `rustup component add llvm-tools-preview`;
   - `cargo-deny`;
@@ -57,15 +58,28 @@ measured but not held to a threshold, which does not exempt it from tests.
 ## Android
 
 `android/` is a Gradle build; run it with JDK 21 (`JAVA_HOME`) and the Android SDK in `ANDROID_HOME` or
-`android/local.properties` (`sdk.dir=…`, ignored by git). From `android/`:
+`android/local.properties` (`sdk.dir=…`, ignored by git). One-time setup, with the SDK's `sdkmanager`:
 
 ```sh
-./gradlew :session:test        # JVM tests, including the interop test against clipsyncd
-./gradlew lintKotlin           # ktlint; formatKotlin fixes what it can
+sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "platform-tools" "ndk;29.0.14206865"
+rustup target add aarch64-linux-android x86_64-linux-android
+cargo install cargo-ndk --locked
 ```
 
-Gradle builds what the tests need through Cargo: `clipsync-ffi` for this machine (the bindings are generated from it
-and the JVM tests load it) and `clipsyncd`.
+From `android/`:
+
+```sh
+./gradlew :session:test               # JVM tests, including the interop test against clipsyncd
+./gradlew :app:testDebugUnitTest      # the app's JVM tests
+./gradlew lintKotlin :app:lintDebug   # ktlint (formatKotlin fixes what it can) and Android Lint
+./gradlew :app:assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:installDebug           # onto the device adb sees
+./gradlew :app:connectedDebugAndroidTest   # the instrumented tests, on that device
+```
+
+Gradle builds the Rust parts through Cargo: `clipsync-ffi` for this machine (the bindings are generated from it and
+the JVM tests load it), `clipsyncd` for the interop test, and `clipsync-ffi` for each Android ABI with `cargo-ndk`
+(the `android` Cargo profile). `cargo-ndk` finds the NDK through the SDK.
 
 The suites of `session`:
 
@@ -75,6 +89,15 @@ The suites of `session`:
 | `FileStateStoreTest` | Saving and loading the state |
 | `NodeTest` | Two nodes on loopback: QR pairing, syncing both ways, reconnecting after a restart, unpairing, refused tokens and forged QR codes |
 | `InteropTest` | A node against the real `clipsyncd` on a private headless Sway: pairing with `clipsync pair`'s URI, then a Wayland copy reaching the node and text from the node reaching the Wayland clipboard |
+
+The suites of `app`:
+
+| Suite | What it runs |
+|-------|--------------|
+| `DeviceNameTest`, `QrDecoderTest`, `PairingTrackerTest` (JVM) | The default device name; reading pairing QR codes from camera frames, including light-on-dark ones; how pairing events map to success or a failure |
+| `KeystoreSyncTest` (on a device) | Two nodes with Keystore identities pair over loopback TLS and sync, through the native library |
+
+The instrumented test needs a phone or an emulator, so CI does not run it.
 
 The test identities are PKCS#12 files made with `keytool` (EC P-256, self-signed, password `testing`) in
 `session/src/test/resources/identities/`; `TlsTest` pins their device IDs as computed by `openssl`.

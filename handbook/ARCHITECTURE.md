@@ -5,7 +5,8 @@ What the code does **today**. The reasoning behind choices lives in
 
 Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired devices over mutual TLS and finds them
 with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text and unpairs.
-There is no Android app yet.
+The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the phone's
+clipboard; it does not send.
 
 ## Big picture
 
@@ -36,7 +37,7 @@ There is no Android app yet.
 | `linux/crates/clipsync-core/` | Protocol logic with no I/O |
 | `linux/crates/clipsync-ffi/` | UniFFI layer over `clipsync-core`, and the `uniffi-bindgen` that generates its Kotlin bindings |
 | `linux/crates/clipsyncd/` | The daemon binary |
-| `android/` | Gradle build of the Android side: `bindings` (generated Kotlin), `session` (the protocol host in plain Kotlin) |
+| `android/` | Gradle build of the Android side: `bindings` (generated Kotlin), `session` (the protocol host in plain Kotlin), `app` (the Android app) |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
 | `linux/dist/clipsyncd.service` | systemd user unit |
 | `handbook/` | This file, the architecture decisions, development setup, user flows |
@@ -93,6 +94,7 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 |--------|----------------|
 | `bindings` | The Kotlin bindings, generated at build time from the host build of `clipsync-ffi` (`cargoBuildHost`, `generateBindings`); no hand-written code |
 | `session` | The protocol host in plain Kotlin, the counterpart of the daemon's runtime: `Node`, `Tls`, `Identity`, `FileStateStore` |
+| `app` | The Android app: the Keystore identity, NSD, the foreground service, the clipboard and the Compose UI around a `Node`; the native library, built by `cargoNdkBuild` |
 
 `session`:
 
@@ -111,6 +113,29 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
   is used without leaving the Keystore.
 - **`FileStateStore`**: paired devices (with their addresses) and the Lamport counter in one JSON file, replaced
   atomically; a damaged file is an error.
+
+`app`:
+
+| File | Responsibility |
+|------|----------------|
+| `SyncService.kt` | Foreground service (`connectedDevice`): owns the `Node` and `Discovery`, writes received text to the clipboard on the main thread, keeps the notification's connected count |
+| `KeystoreIdentity.kt` | The EC P-256 key in the Android Keystore (alias `clipsync-identity`) and the self-signed certificate the Keystore issues for it |
+| `Discovery.kt` | `NsdManager`: advertises `_clipsync._tcp` with the core's instance name and TXT properties, and reports resolved services to the node through the core's `peer_from_service` (Android 14+ follows each service; older versions resolve one at a time) |
+| `Sync.kt` | The running node as the UI sees it: a status `StateFlow` and an event `SharedFlow` |
+| `Pairing.kt` | `PairingTracker`: follows one QR pairing through the node's events to success or a failure the user can act on |
+| `QrDecoder.kt` | Reads a QR code from a camera frame's luminance plane with ZXing, dark on light or light on dark |
+| `DeviceName.kt` | The device name: the user's choice, or the phone's model cut to 64 bytes |
+| `ui/` | Compose screens: home (this device, battery optimisation, paired devices), pairing (camera or pasted link), a device's page, about |
+
+- The native library is `clipsync-ffi` built by `cargo-ndk` with the `android` Cargo profile, for `arm64-v8a` and
+  `x86_64`, linked for 16 KB pages and packaged uncompressed. JNA, which the bindings call through, comes as its
+  Android AAR.
+- The Keystore key signs the TLS handshakes through the platform's JSSE provider (Conscrypt) without leaving the
+  Keystore.
+- Files: `state.json` (paired devices, their addresses, the Lamport counter) in the app's files directory; the device
+  name in shared preferences. Neither is backed up or transferred to another device, since the key they belong to
+  cannot be.
+- The node listens on port 47823, or on any free port if that one is taken; discovery advertises the port in use.
 
 ## `clipsyncd`: doing
 

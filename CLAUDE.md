@@ -133,6 +133,12 @@ cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 ```
 
+For Android changes, run from `android/` (with JDK 21; it builds the Rust parts it needs):
+
+```sh
+./gradlew lintKotlin :app:lintDebug :session:test :app:testDebugUnitTest :app:assembleDebug
+```
+
 See `handbook/DEVELOPMENT.md` for prerequisites and the full coverage, diff coverage and dependency audit commands.
 For documentation-only changes, check the diff, referenced paths and consistency with the code; Rust checks are not
 required.
@@ -141,9 +147,9 @@ required.
 
 - Every push to any branch runs: `rustfmt` check, `clippy` with warnings as errors, the test suite with coverage, diff
   coverage (`diff-cover` against `cargo llvm-cov`'s report: new/changed lines of `clipsync-core` and `clipsync-ffi`
-  must be 100% covered, not just the project average), `cargo-deny`, and for `android/` ktlint and the JVM tests. Pull
-  requests reuse the checks of their head commit. When nothing but Markdown changed (a branch compared with `main` as
-  a whole), the checks are skipped, and a skipped check counts as passed.
+  must be 100% covered, not just the project average), `cargo-deny`, and for `android/` ktlint, Android Lint, the JVM
+  tests and the APK build. Pull requests reuse the checks of their head commit. When nothing but Markdown changed (a
+  branch compared with `main` as a whole), the checks are skipped, and a skipped check counts as passed.
 - Diff coverage applies to `clipsync-core` and `clipsync-ffi`; `clipsyncd`'s coverage is measured but not held to a
   threshold. That does not waive the requirement to test its behaviour changes.
 - The Wayland tests and the Android interop test start private headless Sway instances, so CI installs `sway` and

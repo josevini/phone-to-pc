@@ -30,8 +30,9 @@ own I/O and feeds bytes and events in. On Android, Kotlin terminates TLS with
 Keystore-backed keys (JSSE/Conscrypt) and hands the decrypted bytes to the
 core, so the private key never leaves the Keystore. The core has no async
 runtime and a synchronous API, so there is no async bridging, and UniFFI turns
-Rust panics into Kotlin exceptions. It adds an estimated 1 MB per ABI to the
-APK.
+Rust panics into Kotlin exceptions. It adds about 1.4 MB per ABI to the APK:
+1.26 MB of `clipsync-ffi` and 0.17 MB of JNA's native part on `arm64-v8a`
+(1.30 MB and 0.12 MB on `x86_64`), stored uncompressed as Android 15+ needs.
 
 Costs accepted: the NDK, `cargo-ndk` and binding generation in the Android
 build and CI; a linker flag for the 16 KB page alignment Android 15+ requires;
@@ -130,3 +131,23 @@ is sent.
 
 Rejected: **sending it once the first peer connects** — the same surprise,
 only later.
+
+## D11 — 64-bit Android only
+
+The app ships native code for `arm64-v8a` (phones) and `x86_64` (the emulator
+and ChromeOS). Nearly every phone running Android 10 or newer has a 64-bit
+CPU; the few low-end ones with a 32-bit userland are left out, which keeps the
+APK and the CI build smaller. Adding `armeabi-v7a` later changes only the
+build, not the protocol.
+
+Rejected: **also `armeabi-v7a`** — one more native library in every APK
+(about 1 MB) and one more Rust target to build, for few devices.
+
+## D12 — The phone's model as its default name
+
+On Android the device name defaults to the phone's model (`Build.MODEL`, such
+as `Pixel 8`), cut to the protocol's 64 bytes; the user can change it in the
+app. It needs no permission and is what the user recognises on the PC.
+
+Rejected: **the name the user set in the system settings** — not every
+manufacturer fills it, and reading it differs across versions.
