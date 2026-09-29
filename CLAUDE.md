@@ -89,6 +89,20 @@ Intended distribution channels; this list does not imply that packages or releas
 - Report which checks ran and their results, and identify checks that could not run and why. Never report an
   unexecuted check as passed.
 
+## Design Guidelines
+
+These apply to the Android app's user interface.
+
+- Modern and responsive: Material 3 in Compose with dynamic colour, light and dark themes, phones and tablets in both
+  orientations, and layouts that survive the largest system font size.
+- Whenever a screen is touched, bring it up to these criteria unless it already conforms.
+- Every flow that asks for input (pairing, renaming the device, adding a manual address) has a Cancel/back action that
+  returns to where it was launched from with no side effects. Cancelling a pairing sends `pair_result { ok: false }`.
+- One primary action per row in lists: tapping a device opens its page; less common actions (unpair, per-device
+  toggles) live on that page, not on the row.
+- When images or files are synced (after v1): show a preview before sending: a thumbnail for images, the file name
+  otherwise.
+
 ## Documentation
 
 - `handbook/` mirrors what the project does today: architecture, architecture decisions, development setup, and a
