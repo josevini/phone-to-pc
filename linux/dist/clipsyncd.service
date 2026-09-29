@@ -1,0 +1,15 @@
+[Unit]
+Description=clipsync: share the clipboard between paired devices
+Documentation=https://github.com/josevini/phone-to-pc
+# Needs the Wayland session: start and stop with it.
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/clipsyncd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

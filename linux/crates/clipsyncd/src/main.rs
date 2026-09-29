@@ -67,6 +67,7 @@ async fn run() -> Result<()> {
         handle.shutdown().await;
         return Err(e);
     }
+    clipsyncd::notify::spawn(&handle);
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     tokio::select! {
         _ = tokio::signal::ctrl_c() => handle.shutdown().await,

@@ -26,5 +26,7 @@ the behaviour that was intended, and the code is the bug.
 - [Syncing the clipboard](flows/syncing.md) — what is synced, and sending text from
   the terminal.
 - [Devices](flows/devices.md) — status, connecting, unpairing.
+- [Running the daemon](flows/running.md) — at login with systemd, by hand, and its
+  notifications.
 
 New user-facing flows get a page here as they ship.

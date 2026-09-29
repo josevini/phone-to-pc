@@ -36,7 +36,8 @@ There is no Android app yet.
 | `linux/crates/clipsync-core/` | Protocol logic with no I/O |
 | `linux/crates/clipsyncd/` | The daemon binary |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
-| `handbook/` | This file, the architecture decisions, development setup |
+| `linux/dist/clipsyncd.service` | systemd user unit |
+| `handbook/` | This file, the architecture decisions, development setup, user flows |
 | `CLAUDE.md`, `AGENTS.md` | Working rules for contributors and coding agents |
 | `.github/workflows/ci.yml` | CI (see `CLAUDE.md`) |
 
@@ -78,6 +79,7 @@ so the Android app can call it through UniFFI unchanged.
 | `discovery.rs` | mDNS: advertises `_clipsync._tcp` with the device ID, reports paired devices it finds to the daemon |
 | `ipc.rs` | The control socket: newline-delimited JSON requests and replies, server and client |
 | `bin/clipsync.rs` | The `clipsync` CLI: status, devices, pairing, send, unpair |
+| `notify.rs` | Desktop notifications for pairing, unpairing and pairing codes |
 | `clipboard/mod.rs` | The `Clipboard` trait and backend-neutral events: `Text`, `Skipped { reason }`, `OwnershipLost`, `Closed` |
 | `clipboard/wayland.rs` | Wayland data-control backend |
 | `clipboard/memory.rs` | In-memory backend, used by the tests |
