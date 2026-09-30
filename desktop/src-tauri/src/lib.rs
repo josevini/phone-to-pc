@@ -2,6 +2,8 @@
 //! the app follows its status through the control socket and sends it requests, like the `clipsync` CLI.
 
 pub mod daemon;
+pub mod pairing;
+pub mod qr;
 pub mod tray;
 
 use std::path::PathBuf;
@@ -16,6 +18,7 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 
+use crate::pairing::{Invite, Pairing, PairingEvent};
 use crate::tray::TrayView;
 
 /// How often to look for the daemon while it is not running.
@@ -33,6 +36,8 @@ struct Shown {
 struct App {
     socket: PathBuf,
     shown: Mutex<Shown>,
+    /// The pairing the window is following, if any.
+    pairing: Mutex<Option<Pairing>>,
 }
 
 /// The parts of the tray that change with the status.
@@ -51,6 +56,43 @@ fn shown(app: State<'_, App>) -> Shown {
 #[tauri::command]
 async fn set_paused(app: State<'_, App>, paused: bool) -> Result<(), String> {
     pause(&app.socket, paused).await
+}
+
+/// Opens pairing mode and returns this device's code; what happens next arrives as `pairing` events.
+#[tauri::command]
+async fn show_code(handle: AppHandle, app: State<'_, App>) -> Result<Invite, String> {
+    app.pairing.lock().unwrap().take();
+    let (invite, pairing) = Pairing::show_code(&app.socket, reporter(handle)).await.map_err(|e| format!("{e:#}"))?;
+    *app.pairing.lock().unwrap() = Some(pairing);
+    Ok(invite)
+}
+
+/// Pairs with the device whose pairing link is `uri`; the outcome arrives as a `pairing` event.
+#[tauri::command]
+async fn pair_with_link(handle: AppHandle, app: State<'_, App>, uri: String) -> Result<(), String> {
+    app.pairing.lock().unwrap().take();
+    let pairing = Pairing::with_link(&app.socket, &uri, reporter(handle)).await.map_err(|e| format!("{e:#}"))?;
+    *app.pairing.lock().unwrap() = Some(pairing);
+    Ok(())
+}
+
+#[tauri::command]
+fn confirm_pairing(app: State<'_, App>, accept: bool) {
+    if let Some(pairing) = app.pairing.lock().unwrap().as_ref() {
+        pairing.confirm(accept);
+    }
+}
+
+/// Stops following the pairing; a code shown here stops working.
+#[tauri::command]
+fn stop_pairing(app: State<'_, App>) {
+    app.pairing.lock().unwrap().take();
+}
+
+fn reporter(handle: AppHandle) -> impl FnMut(PairingEvent) + Send + 'static {
+    move |event| {
+        let _ = handle.emit("pairing", event);
+    }
 }
 
 async fn pause(socket: &std::path::Path, paused: bool) -> Result<(), String> {
@@ -72,8 +114,15 @@ pub fn run() {
     };
     let initial = Shown { status: None, view: TrayView::of(None) };
     tauri::Builder::default()
-        .manage(App { socket: socket.clone(), shown: Mutex::new(initial) })
-        .invoke_handler(tauri::generate_handler![shown, set_paused])
+        .manage(App { socket: socket.clone(), shown: Mutex::new(initial), pairing: Mutex::new(None) })
+        .invoke_handler(tauri::generate_handler![
+            shown,
+            set_paused,
+            show_code,
+            pair_with_link,
+            confirm_pairing,
+            stop_pairing
+        ])
         .setup(move |app| {
             let items = build_tray(app.handle())?;
             // `--hidden` starts in the tray only, as when started with the session.
@@ -89,6 +138,9 @@ pub fn run() {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
+                // A hidden window cannot show a code or ask to confirm one.
+                window.state::<App>().pairing.lock().unwrap().take();
+                let _ = window.emit("closed", ());
             }
         })
         .run(tauri::generate_context!())

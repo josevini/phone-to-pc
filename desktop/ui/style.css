@@ -25,6 +25,11 @@
   box-sizing: border-box;
 }
 
+/* Rules that set `display` (such as .row) would otherwise show hidden elements. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -94,7 +99,9 @@ h2 {
   padding: 12px 20px;
 }
 
-.row + .row {
+/* A divider between the visible rows of a group. */
+.group > :not([hidden]) ~ :not([hidden]),
+#devices > .row + .row {
   border-top: 1px solid var(--divider);
 }
 
@@ -177,4 +184,158 @@ input[role="switch"]:disabled {
 input[role="switch"]:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button:focus-visible,
+input[type="text"]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Inside the row: the group's rounded corners would clip it outside. */
+.row.action:focus-visible {
+  outline-offset: -3px;
+}
+
+.row.action {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  text-align: left;
+}
+
+#no-devices {
+  margin: 0;
+}
+
+#devices {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.primary {
+  min-height: 40px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+.text {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 20px;
+  background: none;
+  color: var(--primary);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+header.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+header.bar h1 {
+  font-size: 20px;
+}
+
+.hint {
+  color: var(--muted);
+  text-align: center;
+}
+
+.qr {
+  width: min(100%, 320px);
+  margin: 16px auto;
+  padding: 8px;
+  border-radius: 16px;
+  /* Dark on light in both themes: that is what cameras read best. */
+  background: #ffffff;
+}
+
+.qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.qr path {
+  fill: #000000;
+  shape-rendering: crispEdges;
+}
+
+.code {
+  margin: 12px 0;
+  font: 600 32px ui-monospace, monospace;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+details {
+  margin-top: 16px;
+  padding: 12px 20px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+summary {
+  color: var(--primary);
+  cursor: pointer;
+}
+
+details p {
+  margin: 12px 0 8px;
+}
+
+code.inline {
+  display: inline;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+#pair-uri {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+form label {
+  display: block;
+  margin: 8px 4px 12px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: 14px ui-monospace, monospace;
 }

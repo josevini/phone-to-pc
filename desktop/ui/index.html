@@ -8,46 +8,98 @@
     <script type="module" src="js/main.js"></script>
   </head>
   <body>
-    <header>
-      <h1>clipsync</h1>
-      <p id="summary" aria-live="polite"></p>
-    </header>
-    <main>
-      <p id="error" class="error" role="alert" hidden></p>
+    <div id="home">
+      <header>
+        <h1>clipsync</h1>
+        <p id="summary" aria-live="polite"></p>
+      </header>
+      <main>
+        <p id="error" class="error" role="alert" hidden></p>
 
-      <section id="down" class="card" hidden>
-        <h2>Start the clipsync daemon</h2>
-        <p>This app shows and controls the daemon that shares the clipboard. Start it, and keep it running:</p>
-        <code>systemctl --user enable --now clipsyncd</code>
-      </section>
+        <section id="down" class="card" hidden>
+          <h2>Start the clipsync daemon</h2>
+          <p>This app shows and controls the daemon that shares the clipboard. Start it, and keep it running:</p>
+          <code>systemctl --user enable --now clipsyncd</code>
+        </section>
 
-      <section id="this-device">
-        <h2>This device</h2>
-        <div class="group">
-          <div class="row">
-            <div>
-              <div id="device-name" class="title"></div>
-              <div id="device-id" class="subtitle"></div>
+        <section id="this-device">
+          <h2>This device</h2>
+          <div class="group">
+            <div class="row">
+              <div>
+                <div id="device-name" class="title"></div>
+                <div id="device-id" class="subtitle"></div>
+              </div>
             </div>
+            <label class="row">
+              <div>
+                <div class="title">Share the clipboard</div>
+                <div id="sharing-hint" class="subtitle"></div>
+              </div>
+              <input id="sharing" type="checkbox" role="switch" />
+            </label>
           </div>
-          <label class="row">
-            <div>
-              <div class="title">Share the clipboard</div>
-              <div id="sharing-hint" class="subtitle"></div>
-            </div>
-            <input id="sharing" type="checkbox" role="switch" />
-          </label>
-        </div>
-      </section>
+        </section>
 
-      <section id="paired">
-        <h2>Paired devices</h2>
-        <ul id="devices" class="group"></ul>
-        <div id="no-devices" class="card" hidden>
-          <p>No paired devices yet. To pair a phone, run this and scan the code it shows with the clipsync app:</p>
-          <code>clipsync pair</code>
-        </div>
-      </section>
-    </main>
+        <section id="paired">
+          <h2>Paired devices</h2>
+          <div class="group">
+            <ul id="devices"></ul>
+            <p id="no-devices" class="row subtitle" hidden>
+              No paired devices yet. Show this device's pairing code, and scan it with the clipsync app on your phone.
+            </p>
+            <button id="show-code" tabindex="0" type="button" class="row action">Show a pairing code</button>
+            <button id="enter-link" tabindex="0" type="button" class="row action">Pair with a link</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="pair" hidden>
+      <header class="bar">
+        <button id="pair-cancel" tabindex="0" type="button" class="text">Cancel</button>
+        <h1 id="pair-title"></h1>
+      </header>
+      <main>
+        <section id="pair-code" hidden>
+          <p class="hint">On your phone, open clipsync, tap Scan a pairing code and point the camera at this code.</p>
+          <div class="qr">
+            <svg id="qr" role="img" aria-label="Pairing code"><path /></svg>
+          </div>
+          <p id="countdown" class="hint" aria-live="off"></p>
+          <details>
+            <summary tabindex="0">Pair another PC instead</summary>
+            <p>On the other PC, choose Pair with a link, or run <code class="inline">clipsync pair</code> with this link:</p>
+            <code id="pair-uri"></code>
+          </details>
+        </section>
+
+        <section id="pair-confirm" class="card" role="alertdialog" aria-labelledby="confirm-title" hidden>
+          <h2 id="confirm-title"></h2>
+          <p>Pair only if the other device shows this same code:</p>
+          <p id="confirm-code" class="code"></p>
+          <div class="buttons">
+            <button id="confirm-no" tabindex="0" type="button" class="text">Different code</button>
+            <button id="confirm-yes" tabindex="0" type="button" class="primary">Same code, pair</button>
+          </div>
+        </section>
+
+        <form id="pair-link" hidden>
+          <label for="link">Paste the pairing link the other PC shows, under its code or from <code class="inline">clipsync pair</code>:</label>
+          <input id="link" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="clipsync://pair?…" />
+          <div class="buttons">
+            <button id="link-submit" tabindex="0" type="submit" class="primary">Pair</button>
+          </div>
+        </form>
+
+        <section id="pair-result" class="card" hidden>
+          <h2 id="result-title"></h2>
+          <p id="result-text"></p>
+          <div class="buttons">
+            <button id="result-action" tabindex="0" type="button" class="primary"></button>
+          </div>
+        </section>
+      </main>
+    </div>
   </body>
 </html>

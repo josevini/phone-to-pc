@@ -679,7 +679,9 @@ name = "clipsync-desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clipsync-core",
  "clipsyncd",
+ "qrcode",
  "serde",
  "tauri",
  "tauri-build",

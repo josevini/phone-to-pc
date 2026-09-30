@@ -156,13 +156,16 @@ cargo deny check                        # deny.toml: linux/'s policy plus Tauri'
 | Suite | What it runs |
 |-------|--------------|
 | `src/view.test.ts` | What the window shows for a status: this device, the switch, the paired devices, a stopped daemon |
+| `src/pairing.test.ts` | A pairing's states and events, the countdown, the QR path and pairing links |
 | `clipsync-desktop` unit tests | `TrayView`: the tray's summary line, switch and icon for each status |
 | `src-tauri/tests/daemon.rs` | `watch` and `request` against a real daemon with an in-memory clipboard: the status and its changes, a daemon that stops, one that starts later |
+| `src-tauri/tests/pairing.rs` | Pairing between two real daemons: a code shown and used, a pasted link, comparing codes (confirmed and refused), cancelling, pairing mode ending, a stale link |
 
 The window and the tray are checked by hand. To do it without touching your desktop, run the app, and a daemon for
 it, on a private headless Sway as described in [Emulators](#emulators): point both at that Sway's `WAYLAND_DISPLAY`
 and `XDG_RUNTIME_DIR`, take screenshots with `grim`, and drive the window from the keyboard with `wtype` (headless
-Sway has no pointer). Run the app under `dbus-run-session` to keep its tray icon off your bar, or on your session
+Sway has no pointer): give the window focus with `swaymsg`, send each step as one `wtype` run with pauses
+(`wtype -s 300 -k Tab -s 300`), and press buttons with `space`. `zbarimg` reads the QR code back from a screenshot. Run the app under `dbus-run-session` to keep its tray icon off your bar, or on your session
 bus to see it: its menu can then be read and clicked with `busctl` (`com.canonical.dbusmenu`). A private D-Bus
 session mounts `gvfs` in the runtime directory; unmount it with `fusermount3 -u` before deleting the directory.
 

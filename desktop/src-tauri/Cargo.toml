@@ -20,10 +20,12 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 anyhow = "1.0.104"
 clipsyncd = { path = "../../linux/crates/clipsyncd" }
+qrcode = { version = "0.14.1", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
 tauri = { version = "2.12", features = ["tray-icon", "image-png"] }
-tokio = { version = "1.53.1", features = ["time"] }
+tokio = { version = "1.53.1", features = ["macros", "sync", "time"] }
 
 [dev-dependencies]
+clipsync-core = { path = "../../linux/crates/clipsync-core" }
 tempfile = "3.27.0"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "sync", "time"] }

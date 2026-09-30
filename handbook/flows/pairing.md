@@ -2,6 +2,8 @@
 
 Two devices sync only after they are paired: each one stores the other's device ID
 (the hash of its public key) and refuses everything else. There are two ways to pair.
+The steps below use the `clipsync` CLI; the desktop app does the same from its window
+(see [The desktop app](desktop.md#pairing)).
 
 ## With a QR code or its URI
 

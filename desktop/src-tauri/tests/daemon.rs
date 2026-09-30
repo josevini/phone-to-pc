@@ -1,33 +1,14 @@
 //! Following a real daemon's status through its control socket, as the app does.
 
+mod support;
+
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 
 use clipsync_desktop::daemon::{request, watch};
-use clipsyncd::clipboard::MemoryClipboard;
-use clipsyncd::daemon::{self, DaemonConfig, DaemonHandle};
-use clipsyncd::ipc::{self, Reply, Request, StatusView};
-use clipsyncd::storage::{Config, Dirs, Identity};
+use clipsyncd::ipc::{Reply, Request, StatusView};
+use support::Daemon;
 use tokio::sync::mpsc;
-
-/// A daemon with an in-memory clipboard, serving its control socket in `dir`.
-async fn start_daemon(dir: &Path, name: &str) -> DaemonHandle {
-    let dirs = Dirs { data: dir.join("data"), config: dir.join("config"), runtime: dir.into() };
-    let identity = Identity::load_or_create(&dirs.data).unwrap();
-    let (clipboard, events) = MemoryClipboard::new();
-    let cfg = DaemonConfig {
-        dirs: dirs.clone(),
-        config: Config { name: name.into(), port: 0, peers: vec![] },
-        identity,
-        platform: "linux".into(),
-        listen: "127.0.0.1:0".parse().unwrap(),
-        advertise: false,
-    };
-    let handle = daemon::spawn(cfg, Arc::new(clipboard), events).await.unwrap();
-    ipc::serve(&dirs.socket(), handle.clone()).await.unwrap();
-    handle
-}
 
 /// What `watch` reported, in order.
 struct Watched(mpsc::UnboundedReceiver<Option<StatusView>>);
@@ -49,8 +30,8 @@ impl Watched {
 #[tokio::test]
 async fn the_status_is_followed_and_requests_reach_the_daemon() {
     let tmp = tempfile::tempdir().unwrap();
-    let daemon = start_daemon(tmp.path(), "alpha").await;
-    let socket = tmp.path().join("clipsync.sock");
+    let daemon = Daemon::start(tmp.path(), "alpha").await;
+    let socket = daemon.socket.clone();
     let mut watched = Watched::start(&socket);
 
     let first = watched.next().await.expect("the daemon is running");
@@ -60,7 +41,7 @@ async fn the_status_is_followed_and_requests_reach_the_daemon() {
     assert_eq!(request(&socket, &Request::Pause).await.unwrap(), Reply::Ok);
     assert!(watched.next().await.unwrap().paused);
 
-    daemon.shutdown().await;
+    daemon.handle.shutdown().await;
     assert_eq!(watched.next().await, None, "a stopped daemon is reported as unreachable");
 }
 
@@ -71,7 +52,7 @@ async fn a_daemon_started_later_is_found() {
     let mut watched = Watched::start(&socket);
     assert_eq!(watched.next().await, None);
 
-    let _daemon = start_daemon(tmp.path(), "late").await;
+    let _daemon = Daemon::start(tmp.path(), "late").await;
     assert_eq!(watched.next().await.expect("found once it runs").name, "late");
 }
 
