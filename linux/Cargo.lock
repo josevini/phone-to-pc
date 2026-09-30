@@ -537,6 +537,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "toml",
+ "toml_edit",
  "tracing",
  "tracing-subscriber",
  "wayland-client",
@@ -1963,6 +1964,7 @@ dependencies = [
  "indexmap",
  "toml_datetime",
  "toml_parser",
+ "toml_writer",
  "winnow",
 ]
 

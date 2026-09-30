@@ -50,6 +50,10 @@ pub enum Request {
     Resume,
     /// Replies with the status, then streams it again each time it changes.
     Subscribe,
+    /// Renames this device.
+    Rename {
+        name: String,
+    },
     /// Unpairs the device named by `device`: its ID, an ID prefix, or its name.
     Unpair {
         device: String,
@@ -237,6 +241,10 @@ async fn handle_request(request: Request, daemon: &DaemonHandle, out: &mpsc::Unb
             tokio::spawn(forward_status(events, status, daemon.clone(), out.clone()));
             return;
         }
+        Request::Rename { name } => match daemon.rename(name).await {
+            Ok(()) => Reply::Ok,
+            Err(e) => Reply::Error { message: format!("{e:#}") },
+        },
         Request::Pause | Request::Resume => {
             daemon.set_paused(request == Request::Pause).await;
             Reply::Ok

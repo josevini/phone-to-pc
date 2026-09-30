@@ -162,6 +162,16 @@ async fn pausing_and_resuming_from_the_command_line() {
 }
 
 #[tokio::test]
+async fn renaming_from_the_command_line() {
+    let a = Node::start("alpha").await;
+    let mut rename = a.cli();
+    rename.args(["rename", "Meu PC"]);
+    let out = run(rename).await;
+    assert!(out.status.success() && text(&out).contains("Renamed to Meu PC"), "{}", text(&out));
+    assert!(text(&run(a.cli()).await).starts_with("Meu PC ("));
+}
+
+#[tokio::test]
 async fn send_reads_standard_input_when_no_text_is_given() {
     let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
     pair_with_cli(&a, &b).await;

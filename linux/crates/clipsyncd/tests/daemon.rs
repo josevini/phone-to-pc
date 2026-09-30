@@ -242,6 +242,38 @@ async fn status_changes_are_reported_once_each() {
 }
 
 #[tokio::test]
+async fn renaming_is_saved_and_reaches_connected_peers() {
+    // a knows where b is, as mDNS would tell it, so it reconnects after the rename.
+    let b = Node::start("beta", vec![]).await;
+    let a = Node::start("alpha", vec![b.addr().await]).await;
+    pair_with_token(&a, &b).await;
+    std::fs::create_dir_all(&a.dirs.config).unwrap();
+    std::fs::write(a.dirs.config_file(), "port = 0\n").unwrap();
+
+    a.handle.rename("alpha 2".into()).await.unwrap();
+    assert_eq!(a.handle.status().await.name, "alpha 2");
+    let config = std::fs::read_to_string(a.dirs.config_file()).unwrap();
+    assert_eq!(config, "port = 0\nname = \"alpha 2\"\n");
+    let a_id = a.id().await;
+    // Reconnecting can take a retry or two of the backoff: allow more than `eventually` does.
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while !b.handle.status().await.devices.iter().any(|d| d.id == a_id && d.name == "alpha 2" && d.connected) {
+        assert!(Instant::now() < deadline, "b never learnt the new name");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(b.saved_state().paired[0].name, "alpha 2");
+}
+
+#[tokio::test]
+async fn an_invalid_name_changes_nothing() {
+    let a = Node::start("alpha", vec![]).await;
+    assert!(a.handle.rename(String::new()).await.is_err());
+    assert!(a.handle.rename("a".repeat(65)).await.is_err());
+    assert_eq!(a.handle.status().await.name, "alpha");
+    assert!(!a.dirs.config_file().exists());
+}
+
+#[tokio::test]
 async fn pausing_is_kept_across_a_restart() {
     let mut a = Node::start("alpha", vec![]).await;
     a.handle.set_paused(true).await;

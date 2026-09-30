@@ -66,7 +66,7 @@ the Android app share it through UniFFI, doing its own I/O around it (see
 | `hex.rs` | Fixed-size byte arrays carried as hex strings |
 
 The host drives `Engine` with plain calls (`connection_opened`, `bytes_received`, `connection_closed`,
-`local_clipboard_changed`, `set_paused`, `confirm_pairing`, `tick`) and passes the current time in; it carries out
+`local_clipboard_changed`, `set_paused`, `set_name`, `confirm_pairing`, `tick`) and passes the current time in; it carries out
 the `Output`s the engine queues: bytes to send, connections to close, text to put on the clipboard, and events to show
 or persist (peers connecting, pairing codes, devices paired or unpaired). The engine trusts nothing but the device ID
 the host reads from the peer's TLS certificate. Its API uses plain data and enums, with no generics, lifetimes or
@@ -202,6 +202,9 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
   1 s to 60 s; a disconnection restarts the schedule at 1 s. The actor drives the engine's timers once a second.
 - **State**: paired devices are saved when paired, renamed or unpaired; the Lamport counter whenever it moves; the
   pause when it is turned on or off.
+- **Renaming** (`rename`): the new name is saved in `config.toml` with `toml_edit`, which keeps the rest of the file
+  as written, and given to the engine for future `hello`s; the mDNS advertisement is replaced, and every connection is
+  closed so that the paired devices reconnect and read the new name.
 - The clipboard content already there when the daemon starts is not sent; later changes are (see D10 in
   [Architecture decisions](ARCHITECTURE_DECISIONS.md)).
 - When the clipboard backend stops (the compositor went away), the daemon stops with an error, so its supervisor can
@@ -213,7 +216,7 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 - `$XDG_RUNTIME_DIR/clipsync.sock`, mode `0600`. A daemon refuses to start while another one answers there, and
   replaces a socket file left by one that died.
 - One JSON object per line. Requests carry `cmd` (`status`, `pair_start`, `pair_stop`, `pair_uri`, `pair_address`,
-  `confirm`, `send`, `pause`, `resume`, `subscribe`, `unpair`); replies carry `type`. Each request gets one reply.
+  `confirm`, `send`, `pause`, `resume`, `subscribe`, `rename`, `unpair`); replies carry `type`. Each request gets one reply.
 - The pairing requests keep the connection streaming the pairing's progress (`pairing_code`, `paired`,
   `pairing_failed`, `pairing_ended`); the client answers a `pairing_code` with `confirm` on the same connection. For a
   pairing this device dialed, only the events of that connection are streamed. Closing the connection that opened
@@ -230,7 +233,7 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 | `$XDG_DATA_HOME/clipsync/identity.key` | The device's EC P-256 private key (PKCS#8 PEM). The device ID is derived from it, so it is never regenerated: a damaged key is an error |
 | `$XDG_DATA_HOME/clipsync/identity.crt` | Self-signed certificate for that key; reissued for the same key when missing or not matching it |
 | `$XDG_DATA_HOME/clipsync/state.json` | Paired devices, the Lamport counter and whether sharing is paused |
-| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses to dial besides the ones found with mDNS) |
+| `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname; `rename` writes it), `port` (47823; 0 lets the system choose), `peers` (addresses to dial besides the ones found with mDNS) |
 
 Directories are created `0700` and files written `0600`, atomically (temporary file and rename). Without
 `XDG_DATA_HOME` or `XDG_CONFIG_HOME`, the defaults under `$HOME` apply; `XDG_RUNTIME_DIR` is required.

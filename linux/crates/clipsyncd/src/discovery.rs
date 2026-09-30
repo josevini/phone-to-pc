@@ -17,17 +17,24 @@ const MDNS_SERVICE_TYPE: &str = "_clipsync._tcp.local.";
 /// Dropping it withdraws the advertisement.
 pub struct Discovery {
     mdns: ServiceDaemon,
+    me: DeviceId,
+    port: u16,
     fullname: String,
+}
+
+/// This device's advertisement: its instance name, its host and port, and its TXT record (spec §3).
+fn service_info(me: DeviceId, name: &str, port: u16) -> Result<ServiceInfo> {
+    let host = format!("clipsync-{}.local.", me.short());
+    let id = me.to_string();
+    let properties = [(TXT_VERSION, TXT_VERSION_VALUE), (TXT_ID, id.as_str())];
+    let info = ServiceInfo::new(MDNS_SERVICE_TYPE, &instance_name(name, &me), &host, "", port, &properties[..])?;
+    Ok(info.enable_addr_auto())
 }
 
 impl Discovery {
     pub fn start(me: DeviceId, name: &str, port: u16, daemon: DaemonHandle) -> Result<Self> {
         let mdns = ServiceDaemon::new()?;
-        let host = format!("clipsync-{}.local.", me.short());
-        let id = me.to_string();
-        let properties = [(TXT_VERSION, TXT_VERSION_VALUE), (TXT_ID, id.as_str())];
-        let info = ServiceInfo::new(MDNS_SERVICE_TYPE, &instance_name(name, &me), &host, "", port, &properties[..])?
-            .enable_addr_auto();
+        let info = service_info(me, name, port)?;
         let fullname = info.get_fullname().to_owned();
         mdns.register(info)?;
 
@@ -44,7 +51,16 @@ impl Discovery {
                 }
             }
         })?;
-        Ok(Discovery { mdns, fullname })
+        Ok(Discovery { mdns, me, port, fullname })
+    }
+
+    /// Advertises this device under its new `name` instead.
+    pub fn rename(&mut self, name: &str) -> Result<()> {
+        let info = service_info(self.me, name, self.port)?;
+        self.mdns.unregister(&self.fullname)?;
+        self.fullname = info.get_fullname().to_owned();
+        self.mdns.register(info)?;
+        Ok(())
     }
 }
 
@@ -64,5 +80,15 @@ mod tests {
     #[test]
     fn the_mdns_service_type_is_the_protocols_in_the_local_domain() {
         assert_eq!(MDNS_SERVICE_TYPE, format!("{SERVICE_TYPE}.local."));
+    }
+
+    #[test]
+    fn the_advertisement_carries_the_devices_name_id_and_port() {
+        let me = clipsync_core::DeviceId(clipsync_core::Hex([0xab; 32]));
+        let info = service_info(me, "book2", 47823).unwrap();
+        assert!(info.get_fullname().starts_with(&instance_name("book2", &me)), "{}", info.get_fullname());
+        assert_eq!(info.get_port(), 47823);
+        assert_eq!(info.get_property_val_str(TXT_ID), Some(me.to_string().as_str()));
+        assert_eq!(info.get_property_val_str(TXT_VERSION), Some(TXT_VERSION_VALUE));
     }
 }

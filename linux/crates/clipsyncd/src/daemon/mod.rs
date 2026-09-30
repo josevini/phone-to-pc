@@ -13,6 +13,7 @@ use anyhow::{Context, Result, anyhow};
 use clipsync_core::DeviceId;
 use clipsync_core::discovery::is_link_local_v6;
 use clipsync_core::engine::{ConnId, Engine, Event, Intent, LocalChange, LocalDevice, Output, PairedDevice, Role};
+use clipsync_core::identity::{MAX_NAME_LEN, is_valid_name};
 use clipsync_core::pairing::PairUri;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc, oneshot};
@@ -20,6 +21,7 @@ use tracing::{debug, info, warn};
 
 use crate::clipboard::{Clipboard, ClipboardEvent};
 use crate::discovery::Discovery;
+use crate::storage::config;
 use crate::storage::state::PairedRecord;
 use crate::storage::{Config, Dirs, Identity, State};
 use crate::tls::Tls;
@@ -121,6 +123,7 @@ pub(crate) enum Cmd {
     },
     SendText(String, oneshot::Sender<LocalChange>),
     SetPaused(bool, oneshot::Sender<()>),
+    Rename(String, oneshot::Sender<Result<()>>),
     Unpair(DeviceId, oneshot::Sender<bool>),
     Shutdown(oneshot::Sender<()>),
 }
@@ -173,6 +176,12 @@ impl DaemonHandle {
     /// Pauses or resumes sharing; paired devices stay connected. Kept across restarts.
     pub async fn set_paused(&self, paused: bool) {
         let _ = self.ask(|tx| Cmd::SetPaused(paused, tx)).await;
+    }
+
+    /// Renames this device: saves the name in `config.toml`, advertises it, and reconnects the connected devices so
+    /// that they learn it.
+    pub async fn rename(&self, name: String) -> Result<()> {
+        self.ask(|tx| Cmd::Rename(name, tx)).await.ok_or_else(|| anyhow!("daemon stopped"))?
     }
 
     /// Unpairs `peer`; false if it was not paired.
@@ -237,11 +246,24 @@ pub async fn spawn(
     for addr in &cfg.config.peers {
         targets.insert(*addr, Target::new(None));
     }
+    let discovery = if cfg.advertise {
+        match Discovery::start(cfg.identity.id, &cfg.config.name, local.port(), handle.clone()) {
+            Ok(discovery) => Some(discovery),
+            Err(e) => {
+                warn!("mDNS unavailable, only configured peers will be dialed: {e:#}");
+                None
+            }
+        }
+    } else {
+        None
+    };
     let actor = Actor {
         me,
         engine,
         state,
         state_file: cfg.dirs.state_file(),
+        config_file: cfg.dirs.config_file(),
+        discovery,
         local,
         clipboard,
         tls,
@@ -254,21 +276,8 @@ pub async fn spawn(
         reported: None,
     };
     info!(id = %cfg.identity.id.short(), name = %cfg.config.name, %local, "clipsync daemon started");
-    let discovery = if cfg.advertise {
-        match Discovery::start(cfg.identity.id, &cfg.config.name, local.port(), handle.clone()) {
-            Ok(discovery) => Some(discovery),
-            Err(e) => {
-                warn!("mDNS unavailable, only configured peers will be dialed: {e:#}");
-                None
-            }
-        }
-    } else {
-        None
-    };
-    tokio::spawn(async move {
-        actor.run(rx).await;
-        drop(discovery);
-    });
+    // The actor owns the advertisement: it is withdrawn when the actor stops.
+    tokio::spawn(actor.run(rx));
     Ok(handle)
 }
 
@@ -292,6 +301,8 @@ struct Actor {
     engine: Engine,
     state: State,
     state_file: std::path::PathBuf,
+    config_file: std::path::PathBuf,
+    discovery: Option<Discovery>,
     local: SocketAddr,
     clipboard: Arc<dyn Clipboard>,
     tls: Tls,
@@ -408,6 +419,9 @@ impl Actor {
                 }
                 let _ = reply.send(());
             }
+            Cmd::Rename(name, reply) => {
+                let _ = reply.send(self.rename(name));
+            }
             Cmd::Unpair(peer, reply) => {
                 let known = self.state.paired.iter().any(|p| p.id == peer);
                 self.engine.unpair(&peer);
@@ -495,6 +509,28 @@ impl Actor {
             _ => {}
         }
         let _ = self.events.send(DaemonEvent::Engine(event));
+    }
+
+    fn rename(&mut self, name: String) -> Result<()> {
+        if !is_valid_name(&name) {
+            anyhow::bail!("a device name is 1 to {MAX_NAME_LEN} bytes long");
+        }
+        if name == self.me.name {
+            return Ok(());
+        }
+        config::save_name(&self.config_file, &name)?;
+        info!(from = %self.me.name, to = %name, "renamed");
+        self.me.name = name.clone();
+        self.engine.set_name(name.clone());
+        if let Some(discovery) = &mut self.discovery
+            && let Err(e) = discovery.rename(&name)
+        {
+            warn!("could not advertise the new name: {e:#}");
+        }
+        // Devices learn a name from `hello`: close the connections, and they reconnect with the new one.
+        self.writers.clear();
+        self.status_dirty = true;
+        Ok(())
     }
 
     /// Dials targets whose device is paired but not connected, when their retry time has come.

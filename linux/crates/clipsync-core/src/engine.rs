@@ -233,6 +233,12 @@ impl Engine {
         self.active.keys().copied().collect()
     }
 
+    /// This device's new name, sent in the `hello` of every connection opened from now on. The host checks it with
+    /// [`crate::identity::is_valid_name`].
+    pub fn set_name(&mut self, name: String) {
+        self.me.name = name;
+    }
+
     /// Pauses or resumes sharing (spec §6): connections stay up, but clips are neither sent nor applied.
     pub fn set_paused(&mut self, paused: bool) {
         self.tracker.set_paused(paused);

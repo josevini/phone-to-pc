@@ -39,6 +39,22 @@ impl Config {
     }
 }
 
+/// Sets `name` in the config file at `path`, keeping the rest of the file as written, comments included. A file
+/// that is not valid TOML is left alone; a missing one is created.
+pub fn save_name(path: &Path, name: &str) -> Result<()> {
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(e).with_context(|| format!("reading {}", path.display())),
+    };
+    let mut doc: toml_edit::DocumentMut = text.parse().with_context(|| format!("{} is not valid", path.display()))?;
+    doc["name"] = toml_edit::value(name);
+    if let Some(dir) = path.parent() {
+        super::create_private_dir(dir)?;
+    }
+    super::write_private(path, doc.to_string().as_bytes())
+}
+
 /// The file as written; every key is optional.
 #[derive(Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -97,6 +113,34 @@ mod tests {
         assert!(load(Some(&format!("name = \"{}\"\n", "a".repeat(65)))).is_err());
         assert!(load(Some("nmae = \"typo\"\n")).is_err());
         assert!(load(Some("peers = [\"my-pc.local\"]\n")).is_err());
+    }
+
+    #[test]
+    fn saving_a_name_keeps_the_rest_of_the_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("config.toml");
+        std::fs::write(&path, "# Mine.\nport = 5000 # fixed\nname = \"old\"\npeers = [\"10.0.0.2:47823\"]\n").unwrap();
+        save_name(&path, "Meu \"PC\"").unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(text, "# Mine.\nport = 5000 # fixed\nname = 'Meu \"PC\"'\npeers = [\"10.0.0.2:47823\"]\n");
+        assert_eq!(Config::load(&path, || unreachable!()).unwrap().name, "Meu \"PC\"");
+    }
+
+    #[test]
+    fn saving_a_name_without_a_file_writes_one_with_the_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("clipsync/config.toml");
+        save_name(&path, "desk").unwrap();
+        assert_eq!(Config::load(&path, || unreachable!()).unwrap().name, "desk");
+    }
+
+    #[test]
+    fn a_damaged_file_is_not_overwritten() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("config.toml");
+        std::fs::write(&path, "name = ").unwrap();
+        assert!(save_name(&path, "desk").is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "name = ");
     }
 
     #[test]

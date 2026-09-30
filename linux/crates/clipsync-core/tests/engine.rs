@@ -364,6 +364,16 @@ fn a_paused_device_stays_connected_but_neither_sends_nor_applies() {
     assert_eq!(net.seen_a.clipboard, vec!["shared".to_string()]);
 }
 
+#[test]
+fn a_renamed_device_introduces_itself_with_its_new_name() {
+    let mut net = Net::paired();
+    net.a.set_name("renamed".into());
+    net.a_dials_b(Intent::Session);
+    // B updates the name it keeps for A, as for any hello with a new name.
+    assert!(has(&net.seen_b.events, &Event::Paired { device: paired(A, "renamed") }));
+    assert!(has(&net.seen_b.events, &Event::PeerConnected { peer: id(A), name: "renamed".into() }));
+}
+
 // ---------------------------------------------------------------- keepalive (spec §7.1)
 
 #[test]

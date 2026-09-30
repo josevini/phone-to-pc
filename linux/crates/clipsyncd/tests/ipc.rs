@@ -223,6 +223,16 @@ async fn a_subscription_ends_when_the_daemon_stops() {
 }
 
 #[tokio::test]
+async fn the_device_is_renamed_through_the_socket() {
+    let a = Node::start("alpha").await;
+    let mut client = a.client().await;
+    assert_eq!(client.request(&Request::Rename { name: "renamed".into() }).await.unwrap(), Reply::Ok);
+    assert_eq!(a.handle.status().await.name, "renamed");
+    let reply = client.request(&Request::Rename { name: String::new() }).await.unwrap();
+    assert!(matches!(reply, Reply::Error { ref message } if message.contains("1 to 64 bytes")), "{reply:?}");
+}
+
+#[tokio::test]
 async fn devices_are_unpaired_by_name_or_id_prefix() {
     let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
     pair(&a, &b).await;

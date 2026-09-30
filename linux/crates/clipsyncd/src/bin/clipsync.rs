@@ -34,6 +34,8 @@ enum Command {
     Pause,
     /// Share the clipboard again after `clipsync pause`.
     Resume,
+    /// Rename this device; other devices learn the new name as they reconnect.
+    Rename { name: String },
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -55,6 +57,10 @@ async fn main() -> Result<()> {
                 "Paused: this device neither sends nor receives the clipboard, and stays paired.\n\
                  Run `clipsync resume` to share it again."
             ),
+            other => fail(other)?,
+        },
+        Command::Rename { name } => match client.request(&Request::Rename { name: name.clone() }).await? {
+            Reply::Ok => println!("Renamed to {name}. Connected devices learn the new name as they reconnect."),
             other => fail(other)?,
         },
         Command::Resume => match client.request(&Request::Resume).await? {
