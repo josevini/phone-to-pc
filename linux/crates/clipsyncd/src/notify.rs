@@ -47,7 +47,11 @@ pub(crate) fn notification_for(event: &DaemonEvent) -> Option<(String, String)> 
             let digits = format!("{code:06}");
             Some((
                 format!("{name} wants to pair"),
-                format!("Code {} {} — confirm in the terminal running `clipsync pair`.", &digits[..3], &digits[3..]),
+                format!(
+                    "Code {} {} — confirm it where pairing mode was opened: the clipsync window or `clipsync pair`.",
+                    &digits[..3],
+                    &digits[3..]
+                ),
             ))
         }
         _ => None,
@@ -78,11 +82,15 @@ mod tests {
     }
 
     #[test]
-    fn a_pairing_code_asks_to_confirm_in_the_terminal() {
+    fn a_pairing_code_asks_to_confirm_where_pairing_was_opened() {
         let code = engine(Event::PairingCode { conn: 1, peer: PHONE, name: "phone".into(), code: 37_725 });
         let (title, body) = notification_for(&code).unwrap();
         assert_eq!(title, "phone wants to pair");
-        assert!(body.contains("037 725") && body.contains("terminal"), "{body}");
+        // Pairing mode is opened by `clipsync pair` or by the desktop app's window.
+        assert!(
+            body.contains("037 725") && body.contains("clipsync window") && body.contains("clipsync pair"),
+            "{body}"
+        );
     }
 
     #[test]

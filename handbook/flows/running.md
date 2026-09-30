@@ -33,4 +33,5 @@ socket.
 ## Notifications
 
 The daemon shows a desktop notification when a device is paired or unpaired, and when a
-device asks to pair by comparing codes (answer in the terminal running `clipsync pair`).
+device asks to pair by comparing codes (answer where pairing mode was opened: the terminal running `clipsync pair`,
+or the desktop app's window).
