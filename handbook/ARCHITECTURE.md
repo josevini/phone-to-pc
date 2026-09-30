@@ -6,7 +6,7 @@ What the code does **today**. The reasoning behind choices lives in
 Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired devices over mutual TLS and finds them
 with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text and unpairs.
 The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the phone's
-clipboard; it does not send.
+clipboard; it sends text chosen in the text-selection menu or the share sheet.
 
 ## Big picture
 
