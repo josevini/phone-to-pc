@@ -3,11 +3,27 @@
 `clipsync-desktop` shows and controls the clipsync daemon from the desktop: a tray icon and a small window. The
 daemon does the syncing and keeps running without the app (see [Running the daemon](running.md)).
 
+## Installing it
+
+Build it (see [Development](../DEVELOPMENT.md#desktop-app)), then install the program, its menu entry and its icon for
+your user:
+
+```sh
+install -Dm755 desktop/src-tauri/target/release/clipsync-desktop ~/.local/bin/clipsync-desktop
+install -Dm644 desktop/dist/clipsync-desktop.desktop ~/.local/share/applications/clipsync-desktop.desktop
+install -Dm644 desktop/src-tauri/icons/icon.svg ~/.local/share/icons/hicolor/scalable/apps/clipsync.svg
+```
+
 ## Starting it
 
-Run `clipsync-desktop`: it opens its window and adds its icon to the tray. With `--hidden` it starts in the tray
-only, as when it is started with the session. Closing the window keeps it in the tray; **Quit** in the tray menu
-closes it.
+Open **clipsync** from the applications menu, or run `clipsync-desktop`: it opens its window and adds its icon to the
+tray. Starting it again while it runs shows its window instead of starting a second one. With `--hidden` it starts in
+the tray only. Closing the window keeps it in the tray; **Quit** in the tray menu closes it.
+
+**Start with the session**, under **This app** in the window, starts it in the tray at login: it adds an entry to
+`~/.config/autostart` (`$XDG_CONFIG_HOME/autostart`) that runs it with `--hidden`, and turning it off removes the
+entry. Desktops that run these entries include GNOME, KDE Plasma, and Hyprland or Sway sessions started with `uwsm`
+(as Omarchy does).
 
 The tray icon appears in bars and desktops that show StatusNotifierItem icons: Waybar (Omarchy, Hyprland, Sway),
 KDE Plasma, and GNOME with the AppIndicator extension.

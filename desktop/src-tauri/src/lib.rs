@@ -1,6 +1,7 @@
 //! clipsync desktop app: a tray icon and a window over the running clipsync daemon (D13). The daemon does the work;
 //! the app follows its status through the control socket and sends it requests, like the `clipsync` CLI.
 
+pub mod autostart;
 pub mod daemon;
 pub mod pairing;
 pub mod qr;
@@ -18,6 +19,7 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 
+use crate::autostart::Autostart;
 use crate::pairing::{Invite, Pairing, PairingEvent};
 use crate::tray::TrayView;
 
@@ -35,6 +37,8 @@ struct Shown {
 
 struct App {
     socket: PathBuf,
+    /// `None` without a home directory to keep the entry in.
+    autostart: Option<Autostart>,
     shown: Mutex<Shown>,
     /// The pairing the window is following, if any.
     pairing: Mutex<Option<Pairing>>,
@@ -56,6 +60,19 @@ fn shown(app: State<'_, App>) -> Shown {
 #[tauri::command]
 async fn set_paused(app: State<'_, App>, paused: bool) -> Result<(), String> {
     pause(&app.socket, paused).await
+}
+
+/// Whether the app starts with the session.
+#[tauri::command]
+fn autostart(app: State<'_, App>) -> bool {
+    app.autostart.as_ref().is_some_and(Autostart::enabled)
+}
+
+#[tauri::command]
+fn set_autostart(app: State<'_, App>, on: bool) -> Result<(), String> {
+    let autostart = app.autostart.as_ref().ok_or("HOME is not set")?;
+    let program = std::env::current_exe().map_err(|e| format!("cannot tell where the app is: {e}"))?;
+    autostart.set(on, &program).map_err(|e| format!("{e}"))
 }
 
 /// Unpairs device `id`, telling it if it is connected.
@@ -118,9 +135,17 @@ pub fn run() {
             std::process::exit(1);
         }
     };
+    let startup = Autostart::from_env();
     let initial = Shown { status: None, view: TrayView::of(None) };
     tauri::Builder::default()
-        .manage(App { socket: socket.clone(), shown: Mutex::new(initial), pairing: Mutex::new(None) })
+        // First, as the plugin requires: starting the app again shows the running one's window instead.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| open_window(app)))
+        .manage(App {
+            socket: socket.clone(),
+            autostart: startup,
+            shown: Mutex::new(initial),
+            pairing: Mutex::new(None),
+        })
         .invoke_handler(tauri::generate_handler![
             shown,
             set_paused,
@@ -128,7 +153,9 @@ pub fn run() {
             pair_with_link,
             confirm_pairing,
             stop_pairing,
-            unpair
+            unpair,
+            autostart,
+            set_autostart
         ])
         .setup(move |app| {
             let items = build_tray(app.handle())?;

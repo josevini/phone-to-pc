@@ -83,6 +83,19 @@ sharing.addEventListener("change", () => {
   });
 });
 
+// ---------------------------------------------------------------- starting with the session
+
+const autostart = element<HTMLInputElement>("autostart");
+
+autostart.addEventListener("change", () => {
+  const on = autostart.checked;
+  invoke("set_autostart", { on }).catch((e: unknown) => {
+    autostart.checked = !on;
+    error.textContent = `Could not change starting with the session: ${String(e)}`;
+    error.hidden = false;
+  });
+});
+
 // ---------------------------------------------------------------- pairing
 
 const pairView = element("pair");
@@ -316,3 +329,4 @@ await listen("closed", () => {
 });
 await listen<Shown>("shown", (event) => showStatus(event.payload));
 showStatus(await invoke<Shown>("shown"));
+autostart.checked = await invoke<boolean>("autostart");

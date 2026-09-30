@@ -40,7 +40,7 @@ shows the daemon's status in the tray and a window, and pauses it.
 | `linux/crates/clipsync-ffi/` | UniFFI layer over `clipsync-core`, and the `uniffi-bindgen` that generates its Kotlin bindings |
 | `linux/crates/clipsyncd/` | The daemon binary |
 | `android/` | Gradle build of the Android side: `bindings` (generated Kotlin), `session` (the protocol host in plain Kotlin), `app` (the Android app) |
-| `desktop/` | The Linux desktop app (Tauri): `src-tauri/` (its Rust backend, a workspace of its own), `src/` (the window's TypeScript), `ui/` (its HTML and CSS) |
+| `desktop/` | The Linux desktop app (Tauri): `src-tauri/` (its Rust backend, a workspace of its own), `src/` (the window's TypeScript), `ui/` (its HTML and CSS), `dist/` (its menu entry) |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
 | `linux/dist/clipsyncd.service` | systemd user unit |
 | `handbook/` | This file, the architecture decisions, development setup, user flows |
@@ -244,9 +244,10 @@ of its own, so the daemon's build never needs WebKitGTK, and it depends on `clip
 |------|----------------|
 | `src-tauri/src/daemon.rs` | `watch`: subscribes to the daemon's status (`subscribe`) and reports each status, or `None` once while the daemon cannot be reached, trying again every 2 s; `request`: one request on its own connection; `unpair` |
 | `src-tauri/src/pairing.rs` | `Pairing`: one pairing on a connection of its own, as the daemon streams a pairing's progress on the connection that started it: showing this device's code (`pair_start`) or pairing with a link (`pair_uri`), reporting a code to compare, the device paired, a failure or the end of pairing mode, and sending the user's answer (`confirm`). Dropping it closes the connection, which closes the pairing mode it opened |
+| `src-tauri/src/autostart.rs` | `Autostart`: the XDG autostart entry (`$XDG_CONFIG_HOME/autostart/clipsync-desktop.desktop`) that starts this program with `--hidden`, its path quoted and escaped as the Desktop Entry specification requires |
 | `src-tauri/src/qr.rs` | The pairing URI as QR code modules, for the window to draw |
 | `src-tauri/src/tray.rs` | `TrayView`: what the tray shows for a status (the summary line, the switch, a dimmed icon); the window gets it too |
-| `src-tauri/src/lib.rs` | The Tauri app: the tray and its menu; the `shown`, `set_paused`, `show_code`, `pair_with_link`, `confirm_pairing`, `stop_pairing` and `unpair` commands; the `shown` event sent to the window on every status and the `pairing` event on every step of a pairing; the window that hides instead of closing (which stops its pairing) and opens at launch unless `--hidden` |
+| `src-tauri/src/lib.rs` | The Tauri app: one instance per session (`tauri-plugin-single-instance`: starting it again shows the running one's window); the tray and its menu; the `shown`, `set_paused`, `show_code`, `pair_with_link`, `confirm_pairing`, `stop_pairing`, `unpair`, `autostart` and `set_autostart` commands; the `shown` event sent to the window on every status and the `pairing` event on every step of a pairing; the window that hides instead of closing (which stops its pairing) and opens at launch unless `--hidden` |
 | `src/view.ts` | `home` and `devicePage`: what the home screen and a device's page show for a status, as plain data |
 | `src/pairing.ts` | `PairState`: where a pairing started from the window is, and how each `pairing` event moves it; the countdown, the QR code as an SVG path, and which text is a pairing link |
 | `src/main.ts` | Draws the home, pairing and device screens, only ever setting device names as text; sends the switch and the pairing actions to the app's commands, and moves keyboard focus with the screen |

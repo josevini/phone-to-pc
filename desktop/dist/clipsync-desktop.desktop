@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=clipsync
+GenericName=Shared clipboard
+Comment=Share the clipboard with your phone and other PCs
+Exec=clipsync-desktop
+Icon=clipsync
+Terminal=false
+Categories=Utility;
+Keywords=clipboard;sync;phone;android;
+StartupWMClass=clipsync-desktop
