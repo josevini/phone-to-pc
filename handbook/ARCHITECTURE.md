@@ -5,10 +5,11 @@ What the code does **today**. The reasoning behind choices lives in
 
 Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired devices over mutual TLS and finds them
 with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text, pauses
-sharing and unpairs. The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the
-phone's clipboard; it sends text chosen in the text-selection menu or the share sheet, and the clipboard's text from a
-Quick Settings tile or the notification. Either side can pause sharing without unpairing. On Linux, a desktop app
-shows the daemon's status in the tray and a window, and pauses it.
+sharing, renames the device and unpairs. The Android app pairs with a PC by scanning its QR code and writes the text
+the PC sends to the phone's clipboard; it sends text chosen in the text-selection menu or the share sheet, and the
+clipboard's text from a Quick Settings tile or the notification. Either side can pause sharing without unpairing. On
+Linux, a desktop app shows the daemon's status in the tray and a window, and does from there what the CLI does
+besides sending text: pausing, pairing, renaming and unpairing.
 
 ## Big picture
 

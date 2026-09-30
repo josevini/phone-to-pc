@@ -14,8 +14,11 @@ systemctl --user enable --now clipsyncd
 journalctl --user -u clipsyncd -f        # its log
 ```
 
-The unit runs `/usr/bin/clipsyncd`, where packages install it. After
-`cargo install --path linux/crates/clipsyncd`, point it at `~/.cargo/bin` instead:
+The unit runs `/usr/bin/clipsyncd`, where packages install it. The Arch Linux package (see
+[Development](../DEVELOPMENT.md#arch-linux-package)) also installs the unit, so only
+`systemctl --user enable --now clipsyncd` is needed then.
+
+After `cargo install --path linux/crates/clipsyncd`, point the unit at `~/.cargo/bin` instead:
 
 ```sh
 systemctl --user edit clipsyncd

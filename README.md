@@ -10,8 +10,8 @@ Android.
   secrets are never sent.
 - **Focused**: only the clipboard, with native Wayland support.
 
-> **Status: early development.** Linux devices pair and sync their clipboards, with a
-> tray app that shows their status and pauses sharing; the
+> **Status: early development.** Linux devices pair and sync their clipboards, from the
+> terminal or a tray app that pairs, pauses, renames and unpairs them; the
 > Android app pairs with them and with other phones, receives their clipboard, and sends
 > text from the text-selection menu, the share sheet, and a Send clipboard tile and
 > notification action.
