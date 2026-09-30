@@ -3,7 +3,8 @@
 //! Each request gets one reply. `pair_start`, `pair_uri` and `pair_address` also keep
 //! streaming the pairing's progress on the same connection until it succeeds or fails;
 //! the client answers a `pairing_code` with `confirm`. Closing the connection that
-//! opened pairing mode closes pairing mode.
+//! opened pairing mode closes pairing mode. `subscribe` replies with the status, then
+//! sends it again whenever it changes, until the client closes the connection.
 
 use std::path::Path;
 
@@ -46,6 +47,8 @@ pub enum Request {
     /// Stops sharing the clipboard, keeping paired devices connected.
     Pause,
     Resume,
+    /// Replies with the status, then streams it again each time it changes.
+    Subscribe,
     /// Unpairs the device named by `device`: its ID, an ID prefix, or its name.
     Unpair {
         device: String,
@@ -220,6 +223,13 @@ async fn handle_request(request: Request, daemon: &DaemonHandle, out: &mpsc::Unb
             };
             Reply::Sent { outcome: outcome.into(), peers }
         }
+        Request::Subscribe => {
+            let events = daemon.subscribe();
+            let status: StatusView = daemon.status().await.into();
+            let _ = out.send(Reply::Status { status: status.clone() });
+            tokio::spawn(forward_status(events, status, daemon.clone(), out.clone()));
+            return;
+        }
         Request::Pause | Request::Resume => {
             daemon.set_paused(request == Request::Pause).await;
             Reply::Ok
@@ -237,6 +247,30 @@ async fn handle_request(request: Request, daemon: &DaemonHandle, out: &mpsc::Unb
         }
     };
     let _ = out.send(reply);
+}
+
+/// Streams the status each time it differs from `last`, until the client goes away.
+async fn forward_status(
+    mut events: broadcast::Receiver<DaemonEvent>,
+    mut last: StatusView,
+    daemon: DaemonHandle,
+    out: mpsc::UnboundedSender<Reply>,
+) {
+    loop {
+        let status: StatusView = match events.recv().await {
+            Ok(DaemonEvent::StatusChanged(status)) => status.into(),
+            Ok(_) => continue,
+            // Some changes were missed: the current status covers them.
+            Err(broadcast::error::RecvError::Lagged(_)) => daemon.status().await.into(),
+            Err(broadcast::error::RecvError::Closed) => return,
+        };
+        if status != last {
+            last = status.clone();
+            if out.send(Reply::Status { status }).is_err() {
+                return;
+            }
+        }
+    }
 }
 
 /// Streams the progress of pairing mode until it ends.

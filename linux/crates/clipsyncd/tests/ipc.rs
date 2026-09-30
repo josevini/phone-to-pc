@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use clipsyncd::clipboard::MemoryClipboard;
 use clipsyncd::daemon::{self, DaemonConfig, DaemonHandle};
-use clipsyncd::ipc::{self, Client, Reply, Request};
+use clipsyncd::ipc::{self, Client, Reply, Request, StatusView};
 use clipsyncd::storage::{Config, Dirs, Identity};
 
 struct Node {
@@ -179,6 +179,37 @@ async fn sharing_is_paused_and_resumed_through_the_socket() {
 
     assert_eq!(client.request(&Request::Resume).await.unwrap(), Reply::Ok);
     assert!(!paused(&mut client).await);
+}
+
+#[tokio::test]
+async fn a_subscriber_gets_the_status_then_each_change() {
+    let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
+    let mut watcher = a.client().await;
+    watcher.send(&Request::Subscribe).await.unwrap();
+    let status = |pick: fn(&StatusView) -> bool| {
+        move |r: &Reply| match r {
+            Reply::Status { status } if pick(status) => Some(()),
+            _ => None,
+        }
+    };
+    let first = wait_for(&mut watcher, |r| match r {
+        Reply::Status { status } => Some(status.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(first.devices.is_empty() && !first.paused && !first.pairing);
+
+    a.client().await.request(&Request::Pause).await.unwrap();
+    wait_for(&mut watcher, status(|s| s.paused)).await;
+    a.client().await.request(&Request::Resume).await.unwrap();
+    wait_for(&mut watcher, status(|s| !s.paused)).await;
+
+    let _clients = pair(&b, &a).await;
+    wait_for(&mut watcher, status(|s| s.pairing)).await;
+    wait_for(&mut watcher, status(|s| s.devices.iter().any(|d| d.name == "beta" && d.connected))).await;
+
+    b.handle.shutdown().await;
+    wait_for(&mut watcher, status(|s| s.devices.iter().any(|d| d.name == "beta" && !d.connected))).await;
 }
 
 #[tokio::test]

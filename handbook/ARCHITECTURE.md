@@ -211,11 +211,14 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 - `$XDG_RUNTIME_DIR/clipsync.sock`, mode `0600`. A daemon refuses to start while another one answers there, and
   replaces a socket file left by one that died.
 - One JSON object per line. Requests carry `cmd` (`status`, `pair_start`, `pair_stop`, `pair_uri`, `pair_address`,
-  `confirm`, `send`, `pause`, `resume`, `unpair`); replies carry `type`. Each request gets one reply.
+  `confirm`, `send`, `pause`, `resume`, `subscribe`, `unpair`); replies carry `type`. Each request gets one reply.
 - The pairing requests keep the connection streaming the pairing's progress (`pairing_code`, `paired`,
   `pairing_failed`, `pairing_ended`); the client answers a `pairing_code` with `confirm` on the same connection. For a
   pairing this device dialed, only the events of that connection are streamed. Closing the connection that opened
   pairing mode closes it.
+- `subscribe` replies with the `status`, then sends a new `status` each time it changes (a device connects,
+  disconnects, pairs or is unpaired, pairing mode opens or closes, sharing is paused or resumed), until the client
+  closes the connection. A client that also sends requests uses another connection for them.
 - `unpair` accepts a device name, full ID or unique ID prefix (4+ characters).
 
 ### Files

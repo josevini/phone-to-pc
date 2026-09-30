@@ -216,6 +216,32 @@ async fn a_paused_daemon_stays_connected_but_neither_sends_nor_applies() {
 }
 
 #[tokio::test]
+async fn status_changes_are_reported_once_each() {
+    let a = Node::start("alpha", vec![]).await;
+    let mut events = a.handle.subscribe();
+    a.handle.set_paused(true).await;
+    a.handle.set_paused(true).await;
+    a.handle.start_pairing().await.unwrap();
+    a.handle.stop_pairing();
+    a.handle.stop_pairing();
+    a.handle.set_paused(false).await;
+
+    let mut changes = vec![];
+    while changes.len() < 4 {
+        let event = tokio::time::timeout(Duration::from_secs(5), events.recv()).await.expect("no status change");
+        if let DaemonEvent::StatusChanged(status) = event.unwrap() {
+            changes.push((status.paused, status.pairing));
+        }
+    }
+    assert_eq!(changes, vec![(true, false), (true, true), (true, false), (false, false)]);
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(
+        std::iter::from_fn(|| events.try_recv().ok()).all(|e| !matches!(e, DaemonEvent::StatusChanged(_))),
+        "a change was reported twice"
+    );
+}
+
+#[tokio::test]
 async fn pausing_is_kept_across_a_restart() {
     let mut a = Node::start("alpha", vec![]).await;
     a.handle.set_paused(true).await;

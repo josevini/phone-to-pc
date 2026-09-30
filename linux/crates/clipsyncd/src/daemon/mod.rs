@@ -53,6 +53,9 @@ pub enum DaemonEvent {
     PairingConnection {
         conn: ConnId,
     },
+    /// What [`DaemonHandle::status`] reports changed: a device connected, disconnected, paired or was unpaired, or
+    /// pairing mode or the pause changed. Carries the new status.
+    StatusChanged(Status),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,6 +250,8 @@ pub async fn spawn(
         events,
         writers: HashMap::new(),
         targets,
+        status_dirty: false,
+        reported: None,
     };
     info!(id = %cfg.identity.id.short(), name = %cfg.config.name, %local, "clipsync daemon started");
     let discovery = if cfg.advertise {
@@ -296,6 +301,9 @@ struct Actor {
     writers: HashMap<ConnId, mpsc::UnboundedSender<Vec<u8>>>,
     /// Addresses to reconnect to: configured peers and where paired devices were found.
     targets: HashMap<SocketAddr, Target>,
+    /// Something the status shows may have changed since `reported` was sent.
+    status_dirty: bool,
+    reported: Option<Status>,
 }
 
 impl Actor {
@@ -374,6 +382,7 @@ impl Actor {
             }
             Cmd::StartPairing(reply) => {
                 let token = self.engine.start_pairing(now);
+                self.status_dirty = true;
                 let _ = reply.send(self.invite(token));
             }
             Cmd::StopPairing => self.engine.stop_pairing(),
@@ -394,6 +403,7 @@ impl Actor {
                 if self.state.paused != paused {
                     self.state.paused = paused;
                     self.save();
+                    self.status_dirty = true;
                     info!(paused, "sharing paused or resumed");
                 }
                 let _ = reply.send(());
@@ -441,9 +451,24 @@ impl Actor {
             self.state.lamport = self.engine.lamport();
             self.save();
         }
+        if std::mem::take(&mut self.status_dirty) {
+            let status = self.status(now_ms());
+            if self.reported.as_ref() != Some(&status) {
+                self.reported = Some(status.clone());
+                let _ = self.events.send(DaemonEvent::StatusChanged(status));
+            }
+        }
     }
 
     fn on_event(&mut self, event: Event) {
+        self.status_dirty |= matches!(
+            event,
+            Event::Paired { .. }
+                | Event::Unpaired { .. }
+                | Event::PeerConnected { .. }
+                | Event::PeerDisconnected { .. }
+                | Event::PairingModeEnded
+        );
         match &event {
             Event::Paired { device } => {
                 self.state.paired.retain(|p| p.id != device.id);
