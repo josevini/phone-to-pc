@@ -13,6 +13,9 @@ see [Architecture](ARCHITECTURE.md).
   directory and clipboard, so they never touch your desktop session.
 - For `android/`: JDK 21, the Android SDK with platform 37 and NDK 29.0.14206865, the Rust targets
   `aarch64-linux-android` and `x86_64-linux-android`, and `cargo-ndk` (see [Android](#android)).
+- For `desktop/`: Node.js 24 with npm, and the libraries Tauri builds against: WebKitGTK 4.1, GTK 3,
+  libayatana-appindicator and librsvg (Arch: `webkit2gtk-4.1 libayatana-appindicator librsvg`; Debian and Ubuntu:
+  `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev`). See [Desktop app](#desktop-app).
 - Tools CI also runs, needed only to reproduce its checks locally:
   - `cargo-llvm-cov`, plus `rustup component add llvm-tools-preview`;
   - `cargo-deny`;
@@ -126,6 +129,42 @@ disabled (`adb shell ime disable …`), or autocorrection rewrites it.
 
 The test identities are PKCS#12 files made with `keytool` (EC P-256, self-signed, password `testing`) in
 `session/src/test/resources/identities/`; `TlsTest` pins their device IDs as computed by `openssl`.
+
+## Desktop app
+
+`desktop/` holds the Tauri app: `npm` runs the window's tools and the Tauri CLI, and `src-tauri/` is a Cargo
+workspace of its own. From `desktop/`:
+
+```sh
+npm ci                                  # build and test tools only; the window ships no npm package
+npm run build                           # tsc: src/ into ui/js/ (ignored by git)
+npm run lint                            # tsc type check and eslint
+npm test                                # node --test on src/**/*.test.ts
+npm run licenses                        # every npm package under a permissive licence
+npx tauri build --no-bundle             # src-tauri/target/release/clipsync-desktop
+```
+
+From `desktop/src-tauri/`:
+
+```sh
+cargo test                              # TrayView, and following a real daemon over its control socket
+cargo clippy --all-targets -- -D warnings
+cargo fmt --check
+cargo deny check                        # deny.toml: linux/'s policy plus Tauri's tree (D13)
+```
+
+| Suite | What it runs |
+|-------|--------------|
+| `src/view.test.ts` | What the window shows for a status: this device, the switch, the paired devices, a stopped daemon |
+| `clipsync-desktop` unit tests | `TrayView`: the tray's summary line, switch and icon for each status |
+| `src-tauri/tests/daemon.rs` | `watch` and `request` against a real daemon with an in-memory clipboard: the status and its changes, a daemon that stops, one that starts later |
+
+The window and the tray are checked by hand. To do it without touching your desktop, run the app, and a daemon for
+it, on a private headless Sway as described in [Emulators](#emulators): point both at that Sway's `WAYLAND_DISPLAY`
+and `XDG_RUNTIME_DIR`, take screenshots with `grim`, and drive the window from the keyboard with `wtype` (headless
+Sway has no pointer). Run the app under `dbus-run-session` to keep its tray icon off your bar, or on your session
+bus to see it: its menu can then be read and clicked with `busctl` (`com.canonical.dbusmenu`). A private D-Bus
+session mounts `gvfs` in the runtime directory; unmount it with `fusermount3 -u` before deleting the directory.
 
 ## Running the daemon
 

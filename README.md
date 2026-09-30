@@ -10,7 +10,8 @@ Android.
   secrets are never sent.
 - **Focused**: only the clipboard, with native Wayland support.
 
-> **Status: early development.** Linux devices pair and sync their clipboards; the
+> **Status: early development.** Linux devices pair and sync their clipboards, with a
+> tray app that shows their status and pauses sharing; the
 > Android app pairs with them and with other phones, receives their clipboard, and sends
 > text from the text-selection menu, the share sheet, and a Send clipboard tile and
 > notification action.
@@ -22,6 +23,7 @@ Android.
 | [`spec/`](spec/) | Protocol spec (source of truth) |
 | [`android/`](android/) | Android app (Kotlin) around the shared core |
 | [`linux/`](linux/) | Rust workspace: `clipsync-core` (sans-IO protocol), `clipsync-ffi` (its Kotlin bindings) and `clipsyncd` (daemon) |
+| [`desktop/`](desktop/) | Linux desktop app (Tauri): a tray icon and window over the daemon |
 | [`handbook/`](handbook/README.md) | Architecture, architecture decisions, development |
 
 ## Trying it
@@ -36,6 +38,9 @@ clipsyncd &                             # the daemon, on your real clipboard
 clipsync pair                           # on one PC: shows a QR code and its URI
 clipsync pair 'clipsync://pair?…'       # on the other PC: pairs with it
 ```
+
+For the tray icon and window, build `desktop/` (see
+[Development](handbook/DEVELOPMENT.md#desktop-app)) and run `clipsync-desktop` next to the daemon.
 
 For the Android app, build and install it from `android/` (see
 [Development](handbook/DEVELOPMENT.md#android)), then tap **Scan a pairing code** and scan

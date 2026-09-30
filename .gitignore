@@ -1,2 +1,6 @@
 linux/target/
 linux/coverage.xml
+desktop/node_modules/
+desktop/ui/js/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/

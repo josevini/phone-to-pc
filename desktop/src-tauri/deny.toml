@@ -1,0 +1,42 @@
+# cargo-deny configuration for the desktop app: `cargo deny check` from desktop/src-tauri/. The same policy as
+# linux/deny.toml, plus what Tauri's dependency tree needs (D13).
+
+[advisories]
+yanked = "deny"
+ignore = [
+    # proc-macro-error is unmaintained (not a vulnerability). It comes with gtk 0.18, the GTK 3 bindings Tauri 2 uses
+    # on Linux, and goes away when Tauri moves to GTK 4.
+    { id = "RUSTSEC-2024-0370", reason = "unmaintained build-time macro crate of gtk 0.18, used by Tauri 2" },
+]
+
+[licenses]
+# clipsync is MIT: only permissive licences may end up in the binary.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+# MPL-2.0 is file-level copyleft: allowed for these crates of Tauri's tree only, which clipsync uses unmodified.
+exceptions = [
+    { crate = "cssparser", allow = ["MPL-2.0"] },
+    { crate = "cssparser-macros", allow = ["MPL-2.0"] },
+    { crate = "dtoa-short", allow = ["MPL-2.0"] },
+    { crate = "option-ext", allow = ["MPL-2.0"] },
+    { crate = "selectors", allow = ["MPL-2.0"] },
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Workspace crates depend on each other by path.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

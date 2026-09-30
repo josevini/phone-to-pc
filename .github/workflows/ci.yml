@@ -96,6 +96,45 @@ jobs:
           name: clipsync-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
+  desktop:
+    name: Desktop
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Libraries Tauri builds against
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run licenses
+      - run: npm audit
+      - run: npm run build
+      - run: cargo fmt --check
+        working-directory: desktop/src-tauri
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: desktop/src-tauri
+      - run: cargo test
+        working-directory: desktop/src-tauri
+
   cargo-deny:
     name: Dependency audit
     needs: changes
@@ -106,3 +145,6 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: linux/Cargo.toml
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: desktop/src-tauri/Cargo.toml

@@ -1,0 +1,145 @@
+//! clipsync desktop app: a tray icon and a window over the running clipsync daemon (D13). The daemon does the work;
+//! the app follows its status through the control socket and sends it requests, like the `clipsync` CLI.
+
+pub mod daemon;
+pub mod tray;
+
+use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::Duration;
+
+use clipsyncd::ipc::{Reply, Request, StatusView};
+use clipsyncd::storage::Dirs;
+use serde::Serialize;
+use tauri::image::Image;
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{TrayIcon, TrayIconBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
+
+use crate::tray::TrayView;
+
+/// How often to look for the daemon while it is not running.
+const RETRY: Duration = Duration::from_secs(2);
+const ICON: &[u8] = include_bytes!("../icons/tray.png");
+const ICON_DIMMED: &[u8] = include_bytes!("../icons/tray-dimmed.png");
+
+/// What the window shows: the daemon's status while it runs, and the tray's view of it.
+#[derive(Debug, Clone, Serialize)]
+struct Shown {
+    status: Option<StatusView>,
+    view: TrayView,
+}
+
+struct App {
+    socket: PathBuf,
+    shown: Mutex<Shown>,
+}
+
+/// The parts of the tray that change with the status.
+struct TrayItems {
+    tray: TrayIcon,
+    summary: MenuItem<Wry>,
+    share: CheckMenuItem<Wry>,
+}
+
+/// What the window shows now; later changes arrive as `shown` events.
+#[tauri::command]
+fn shown(app: State<'_, App>) -> Shown {
+    app.shown.lock().unwrap().clone()
+}
+
+#[tauri::command]
+async fn set_paused(app: State<'_, App>, paused: bool) -> Result<(), String> {
+    pause(&app.socket, paused).await
+}
+
+async fn pause(socket: &std::path::Path, paused: bool) -> Result<(), String> {
+    let request = if paused { Request::Pause } else { Request::Resume };
+    match daemon::request(socket, &request).await {
+        Ok(Reply::Ok) => Ok(()),
+        Ok(other) => Err(format!("unexpected reply from the daemon: {other:?}")),
+        Err(e) => Err(format!("{e:#}")),
+    }
+}
+
+pub fn run() {
+    let socket = match Dirs::from_env() {
+        Ok(dirs) => dirs.socket(),
+        Err(e) => {
+            eprintln!("clipsync: {e:#}");
+            std::process::exit(1);
+        }
+    };
+    let initial = Shown { status: None, view: TrayView::of(None) };
+    tauri::Builder::default()
+        .manage(App { socket: socket.clone(), shown: Mutex::new(initial) })
+        .invoke_handler(tauri::generate_handler![shown, set_paused])
+        .setup(move |app| {
+            let items = build_tray(app.handle())?;
+            // `--hidden` starts in the tray only, as when started with the session.
+            if !std::env::args().any(|arg| arg == "--hidden") {
+                open_window(app.handle());
+            }
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(daemon::watch(socket, RETRY, move |status| show(&handle, &items, status)));
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the window keeps the app in the tray.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
+        .run(tauri::generate_context!())
+        .expect("clipsync could not start");
+}
+
+fn build_tray(app: &AppHandle) -> tauri::Result<TrayItems> {
+    let view = TrayView::of(None);
+    let summary = MenuItem::with_id(app, "summary", &view.summary, false, None::<&str>)?;
+    let share = CheckMenuItem::with_id(app, "share", "Share the clipboard", false, true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open clipsync", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&summary, &separator, &share, &open, &separator, &quit])?;
+    let toggled = share.clone();
+    let tray = TrayIconBuilder::with_id("main")
+        .icon(Image::from_bytes(ICON_DIMMED)?)
+        .menu(&menu)
+        .on_menu_event(move |app, event| match event.id().as_ref() {
+            "share" => {
+                // The item has already flipped; the daemon's next status sets it again either way.
+                let paused = !toggled.is_checked().unwrap_or(true);
+                let socket = app.state::<App>().socket.clone();
+                tauri::async_runtime::spawn(async move { pause(&socket, paused).await });
+            }
+            "open" => open_window(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .build(app)?;
+    Ok(TrayItems { tray, summary, share })
+}
+
+fn open_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+/// Shows `status` in the tray and the window.
+fn show(app: &AppHandle, items: &TrayItems, status: Option<StatusView>) {
+    let view = TrayView::of(status.as_ref());
+    let _ = items.summary.set_text(&view.summary);
+    let _ = items.share.set_enabled(view.sharing.is_some());
+    let _ = items.share.set_checked(view.sharing.unwrap_or(false));
+    if let Ok(icon) = Image::from_bytes(if view.dimmed { ICON_DIMMED } else { ICON }) {
+        let _ = items.tray.set_icon(Some(icon));
+    }
+    let shown = Shown { status, view };
+    *app.state::<App>().shown.lock().unwrap() = shown.clone();
+    let _ = app.emit("shown", shown);
+}

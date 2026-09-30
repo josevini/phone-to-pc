@@ -7,7 +7,8 @@ Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired 
 with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text, pauses
 sharing and unpairs. The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the
 phone's clipboard; it sends text chosen in the text-selection menu or the share sheet, and the clipboard's text from a
-Quick Settings tile or the notification. Either side can pause sharing without unpairing.
+Quick Settings tile or the notification. Either side can pause sharing without unpairing. On Linux, a desktop app
+shows the daemon's status in the tray and a window, and pauses it.
 
 ## Big picture
 
@@ -39,6 +40,7 @@ Quick Settings tile or the notification. Either side can pause sharing without u
 | `linux/crates/clipsync-ffi/` | UniFFI layer over `clipsync-core`, and the `uniffi-bindgen` that generates its Kotlin bindings |
 | `linux/crates/clipsyncd/` | The daemon binary |
 | `android/` | Gradle build of the Android side: `bindings` (generated Kotlin), `session` (the protocol host in plain Kotlin), `app` (the Android app) |
+| `desktop/` | The Linux desktop app (Tauri): `src-tauri/` (its Rust backend, a workspace of its own), `src/` (the window's TypeScript), `ui/` (its HTML and CSS) |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
 | `linux/dist/clipsyncd.service` | systemd user unit |
 | `handbook/` | This file, the architecture decisions, development setup, user flows |
@@ -232,6 +234,25 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 
 Directories are created `0700` and files written `0600`, atomically (temporary file and rename). Without
 `XDG_DATA_HOME` or `XDG_CONFIG_HOME`, the defaults under `$HOME` apply; `XDG_RUNTIME_DIR` is required.
+
+## `desktop/`: the Linux desktop app
+
+A Tauri 2 app that shows and controls the running daemon (D13); it does no syncing. `src-tauri/` is a Cargo workspace
+of its own, so the daemon's build never needs WebKitGTK, and it depends on `clipsyncd` for its control-socket client.
+
+| File | Responsibility |
+|------|----------------|
+| `src-tauri/src/daemon.rs` | `watch`: subscribes to the daemon's status (`subscribe`) and reports each status, or `None` once while the daemon cannot be reached, trying again every 2 s; `request`: one request on its own connection |
+| `src-tauri/src/tray.rs` | `TrayView`: what the tray shows for a status (the summary line, the switch, a dimmed icon); the window gets it too |
+| `src-tauri/src/lib.rs` | The Tauri app: the tray and its menu, the `shown` and `set_paused` commands, the `shown` event sent to the window on every status, and the window that hides instead of closing and opens at launch unless `--hidden` |
+| `src/view.ts` | `home`: what the window shows for a status, as plain data |
+| `src/main.ts` | Draws that in the window, only ever setting device names as text, and sends the switch to `set_paused` |
+
+- The window reaches Tauri through its global API (`app.withGlobalTauri`), typed in `src/tauri.d.ts`, so it ships no
+  npm package; `tsc` compiles `src/` into `ui/js/`, which Tauri embeds.
+- The tray icon is a StatusNotifierItem through libayatana-appindicator, which has no tooltip on Linux: the menu's
+  first line carries the summary.
+- The content security policy allows only the app's own scripts and styles.
 
 ## Flow of one copy
 

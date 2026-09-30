@@ -12,8 +12,8 @@ the behaviour that was intended, and the code is the bug.
 ## Contents
 
 - [Architecture](ARCHITECTURE.md) — how the code is put together: the
-  protocol core, the daemon, the Wayland backend and its threads, the flow of
-  one copy.
+  protocol core, the daemon, the Wayland backend and its threads, the desktop
+  app, the flow of one copy.
 - [Architecture decisions](ARCHITECTURE_DECISIONS.md) — the technical
   decisions in force and why they were made, including those that shape parts
   not built yet.
@@ -30,5 +30,6 @@ the behaviour that was intended, and the code is the bug.
   notifications.
 - [The Android app](flows/android.md) — first run, pairing with a PC's QR code, receiving
   the clipboard, sending text, devices.
+- [The desktop app](flows/desktop.md) — the tray icon and window over the daemon on Linux.
 
 New user-facing flows get a page here as they ship.

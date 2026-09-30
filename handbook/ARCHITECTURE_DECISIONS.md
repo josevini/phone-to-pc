@@ -151,3 +151,35 @@ app. It needs no permission and is what the user recognises on the PC.
 
 Rejected: **the name the user set in the system settings** — not every
 manufacturer fills it, and reading it differs across versions.
+
+## D13 — The Linux desktop app in Tauri, as a client of the daemon
+
+The desktop app is a tray icon with a small window, built with Tauri 2: a Rust
+backend and a TypeScript window rendered by the system's WebKitGTK. It does no
+syncing itself. It follows the running daemon through the control socket, as
+the `clipsync` CLI does, reusing the daemon's own socket client and message
+types from `clipsyncd::ipc`, so the two cannot drift apart. The daemon keeps
+running under systemd whether the app is open or not.
+
+Tauri keeps the always-on part light (a native binary of a few MB, no bundled
+browser) and has a tray icon that speaks StatusNotifierItem, which Waybar,
+KDE and GNOME with the AppIndicator extension show. The window is plain
+TypeScript with no framework and no npm package at runtime; npm brings only
+build and test tools.
+
+Its dependency tree brings licences the rest of clipsync does not use, allowed
+for the desktop app only: the system libraries WebKitGTK, GTK and
+libayatana-appindicator are LGPL and linked dynamically, unmodified; a few
+crates of Tauri's tree (`cssparser`, `selectors`, `dtoa-short`, `option-ext`)
+are MPL-2.0, file-level copyleft, used unmodified like UniFFI's (D2). Both
+`desktop/src-tauri/deny.toml` and an npm licence check enforce the rest.
+
+Rejected:
+- **GTK 4 with gtk4-rs** — a native look and less memory, but the interface
+  written in Rust widgets; the user chose to write it in TypeScript.
+- **Electron** — bundles a whole Chromium: about 150 MB installed and far more
+  memory than a tray app should use while always running.
+- **GJS** (GNOME's JavaScript) — native GTK in JavaScript, but no tray library
+  and no way to share the socket's types with the daemon.
+- **An app that runs the daemon itself** — the clipboard would stop syncing
+  whenever the app is closed; the systemd service already keeps the daemon up.

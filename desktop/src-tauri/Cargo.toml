@@ -1,0 +1,29 @@
+[package]
+name = "clipsync-desktop"
+description = "clipsync desktop app: a tray icon and a window over the clipsync daemon"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/josevini/phone-to-pc"
+rust-version = "1.90"
+publish = false
+
+# A workspace of its own, so that building the daemon never needs WebKitGTK.
+[workspace]
+
+[lib]
+name = "clipsync_desktop"
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+anyhow = "1.0.104"
+clipsyncd = { path = "../../linux/crates/clipsyncd" }
+serde = { version = "1.0.229", features = ["derive"] }
+tauri = { version = "2.12", features = ["tray-icon", "image-png"] }
+tokio = { version = "1.53.1", features = ["time"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "sync", "time"] }

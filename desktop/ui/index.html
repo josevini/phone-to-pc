@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>clipsync</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>clipsync</h1>
+      <p id="summary" aria-live="polite"></p>
+    </header>
+    <main>
+      <p id="error" class="error" role="alert" hidden></p>
+
+      <section id="down" class="card" hidden>
+        <h2>Start the clipsync daemon</h2>
+        <p>This app shows and controls the daemon that shares the clipboard. Start it, and keep it running:</p>
+        <code>systemctl --user enable --now clipsyncd</code>
+      </section>
+
+      <section id="this-device">
+        <h2>This device</h2>
+        <div class="group">
+          <div class="row">
+            <div>
+              <div id="device-name" class="title"></div>
+              <div id="device-id" class="subtitle"></div>
+            </div>
+          </div>
+          <label class="row">
+            <div>
+              <div class="title">Share the clipboard</div>
+              <div id="sharing-hint" class="subtitle"></div>
+            </div>
+            <input id="sharing" type="checkbox" role="switch" />
+          </label>
+        </div>
+      </section>
+
+      <section id="paired">
+        <h2>Paired devices</h2>
+        <ul id="devices" class="group"></ul>
+        <div id="no-devices" class="card" hidden>
+          <p>No paired devices yet. To pair a phone, run this and scan the code it shows with the clipsync app:</p>
+          <code>clipsync pair</code>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

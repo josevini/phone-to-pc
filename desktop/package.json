@@ -1,0 +1,26 @@
+{
+  "name": "clipsync-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "clipsync desktop app: a tray icon and a window over the clipsync daemon",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc -p tsconfig.json && eslint .",
+    "test": "node --test 'src/**/*.test.ts'",
+    "licenses": "node scripts/check-licenses.mjs",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.12.0",
+    "@types/node": "^24.19.0",
+    "eslint": "^10.11.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
