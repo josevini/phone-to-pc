@@ -5,35 +5,19 @@ import android.content.Intent
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,10 +39,8 @@ import io.github.josevini.clipsync.R
 import io.github.josevini.clipsync.SyncService
 import io.github.josevini.clipsync.core.isValidName
 import io.github.josevini.clipsync.core.shortId
-import io.github.josevini.clipsync.session.DeviceStatus
 import io.github.josevini.clipsync.session.NodeStatus
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     status: NodeStatus?,
@@ -65,115 +49,114 @@ fun HomeScreen(
     onAbout: () -> Unit,
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = onAbout) { Icon(Icons.Outlined.Info, stringResource(R.string.about)) }
-                },
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onPair,
-                icon = { Icon(Icons.Filled.Add, null) },
-                text = { Text(stringResource(R.string.pair_with_pc)) },
-            )
-        },
-    ) { padding ->
-        Readable(Modifier.padding(padding)) {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item { ThisDevice(status, onRename = { renaming = true }) }
-                item { BatteryOptimization() }
-                item {
-                    Text(
-                        stringResource(R.string.paired_devices),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 8.dp),
+    val exempt = batteryExempt()
+    val devices = status?.devices.orEmpty()
+    val colors = MaterialTheme.colorScheme
+    CollapsingScaffold(
+        title = stringResource(R.string.app_name),
+        subtitle = summary(status),
+        actions = { MoreMenu(onAbout) },
+    ) {
+        if (!exempt) item { BatteryOptimization() }
+        item {
+            Group(title = stringResource(R.string.this_device)) {
+                GroupRow(
+                    title = status?.name ?: stringResource(R.string.starting),
+                    icon = R.drawable.ic_smartphone,
+                    summary = status?.let { stringResource(R.string.short_id, shortId(it.id)) },
+                    onClickLabel = stringResource(R.string.rename),
+                    onClick = if (status != null) ({ renaming = true }) else null,
+                )
+            }
+        }
+        item {
+            Group(title = stringResource(R.string.paired_devices)) {
+                devices.forEach { device ->
+                    GroupRow(
+                        title = device.name,
+                        icon = R.drawable.ic_computer,
+                        iconTint = if (device.connected) colors.primary else colors.onSurfaceVariant,
+                        summary = stringResource(if (device.connected) R.string.connected else R.string.not_connected),
+                        summaryColor = if (device.connected) colors.primary else colors.onSurfaceVariant,
+                        onClick = { onDevice(device.id) },
                     )
+                    GroupDivider()
                 }
-                val devices = status?.devices.orEmpty()
                 if (devices.isEmpty()) {
-                    item {
-                        Text(
-                            stringResource(R.string.no_devices),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    NoDevices()
+                    GroupDivider(afterIcon = false)
                 }
-                items(devices, key = { it.id }) { device -> DeviceRow(device, onClick = { onDevice(device.id) }) }
+                GroupRow(
+                    title = stringResource(R.string.pair_with_pc),
+                    icon = R.drawable.ic_qr_code_scanner,
+                    titleColor = colors.primary,
+                    onClick = onPair,
+                )
+            }
+        }
+        if (devices.isNotEmpty()) {
+            item {
+                SuggestionCard(
+                    title = stringResource(R.string.tip_send_title),
+                    text = stringResource(R.string.tip_send_text),
+                    icon = R.drawable.ic_send,
+                )
             }
         }
     }
     if (renaming) RenameDialog(current = status?.name, onDismiss = { renaming = false })
 }
 
+/** What the phone is doing, under the large title. */
 @Composable
-private fun ThisDevice(
-    status: NodeStatus?,
-    onRename: () -> Unit,
-) {
-    Card(Modifier.fillMaxWidth()) {
-        ListItem(
-            overlineContent = { Text(stringResource(R.string.this_device)) },
-            headlineContent = { Text(status?.name ?: stringResource(R.string.starting)) },
-            supportingContent = { status?.let { Text(stringResource(R.string.short_id, shortId(it.id))) } },
-            trailingContent = {
-                IconButton(onClick = onRename, enabled = status != null) {
-                    Icon(Icons.Outlined.Edit, stringResource(R.string.rename))
-                }
-            },
-            colors =
-                androidx.compose.material3.ListItemDefaults
-                    .colors(containerColor = CardDefaults.cardColors().containerColor),
-        )
+private fun summary(status: NodeStatus?): String {
+    val devices = status?.devices ?: return stringResource(R.string.starting)
+    val connected = devices.count { it.connected }
+    return when {
+        devices.isEmpty() -> stringResource(R.string.no_devices_title)
+        connected == 0 -> stringResource(R.string.notification_waiting)
+        else -> pluralStringResource(R.plurals.notification_connected, connected, connected)
     }
 }
 
 @Composable
-private fun DeviceRow(
-    device: DeviceStatus,
-    onClick: () -> Unit,
-) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        device.name.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-            Spacer(Modifier.size(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(device.name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    stringResource(if (device.connected) R.string.connected else R.string.not_connected),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (device.connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+private fun MoreMenu(onAbout: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) { Icon(painterResource(R.drawable.ic_more_vert), stringResource(R.string.more_options)) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.about)) },
+                onClick = {
+                    open = false
+                    onAbout()
+                },
+            )
         }
     }
 }
 
-/** Offers to exempt the app from battery optimisation, which would otherwise cut its connections while the phone sleeps. */
-@SuppressLint("BatteryLife") // Keeping connections to paired devices open is the app's purpose.
 @Composable
-private fun BatteryOptimization() {
+private fun NoDevices() {
+    Column(
+        Modifier.fillMaxWidth().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        LargeIcon(R.drawable.ic_devices, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            stringResource(R.string.no_devices),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Command("clipsync pair")
+    }
+}
+
+/** Whether the app is exempt from battery optimisation, checked again each time the screen comes back. */
+@Composable
+private fun batteryExempt(): Boolean {
     val context = LocalContext.current
     val power = remember { context.getSystemService(PowerManager::class.java) }
     var exempt by remember { mutableStateOf(true) }
@@ -181,23 +164,24 @@ private fun BatteryOptimization() {
         exempt = power.isIgnoringBatteryOptimizations(context.packageName)
         onPauseOrDispose {}
     }
-    if (exempt) return
-    Card(
-        Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(stringResource(R.string.battery_title), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.battery_text), style = MaterialTheme.typography.bodyMedium)
-            TextButton(
-                onClick = {
-                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri())
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.align(Alignment.End),
-            ) { Text(stringResource(R.string.battery_allow)) }
-        }
-    }
+    return exempt
+}
+
+/** Offers to exempt the app from battery optimisation, which would otherwise cut its connections while the phone sleeps. */
+@SuppressLint("BatteryLife") // Keeping connections to paired devices open is the app's purpose.
+@Composable
+private fun BatteryOptimization() {
+    val context = LocalContext.current
+    SuggestionCard(
+        title = stringResource(R.string.battery_title),
+        text = stringResource(R.string.battery_text),
+        icon = R.drawable.ic_battery_alert,
+        action = stringResource(R.string.battery_allow),
+        onAction = {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri())
+            context.startActivity(intent)
+        },
+    )
 }
 
 @Composable

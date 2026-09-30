@@ -24,6 +24,7 @@
 
     <string name="about">About</string>
     <string name="back">Back</string>
+    <string name="more_options">More options</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="done">Done</string>
@@ -37,7 +38,8 @@
     <string name="rename_invalid">Use 1 to 64 bytes of text.</string>
 
     <string name="paired_devices">Paired devices</string>
-    <string name="no_devices">No paired devices yet. On your PC, run clipsync pair, then tap Pair with a PC and scan its code.</string>
+    <string name="no_devices_title">No paired devices yet</string>
+    <string name="no_devices">Run this on your PC, then tap Pair with a PC and scan the code it shows.</string>
     <string name="connected">Connected</string>
     <string name="not_connected">Not connected</string>
 
@@ -45,15 +47,20 @@
     <string name="battery_text">Battery optimisation can cut the connection to your devices while the phone sleeps.</string>
     <string name="battery_allow">Allow</string>
 
+    <string name="tip_send_title">Send text from any app</string>
+    <string name="tip_send_text">Select text, then choose Send to devices in the menu that pops up.</string>
+
     <string name="pair_with_pc">Pair with a PC</string>
-    <string name="pair_instructions">On your PC, run clipsync pair and point the camera at the code it shows.</string>
+    <string name="pair_instructions">Run this on your PC, then point the camera at the code it shows.</string>
     <string name="allow_camera">Allow the camera to scan</string>
-    <string name="pairing_link">Or paste the pairing link</string>
+    <string name="or">or</string>
+    <string name="pairing_link">Paste the pairing link</string>
     <string name="pair">Pair</string>
     <string name="invalid_code">That is not a clipsync pairing code.</string>
     <string name="pairing_with">Pairing with %1$s…</string>
     <string name="paired_with">Paired with %1$s</string>
     <string name="paired_hint">Text copied on that device now appears in this phone\'s clipboard.</string>
+    <string name="pair_failed">Pairing failed</string>
     <string name="try_again">Try again</string>
     <string name="failure_code_expired">This code was already used or has expired. Run clipsync pair again for a new one.</string>
     <string name="failure_not_in_pairing_mode">The PC is no longer in pairing mode. Run clipsync pair again.</string>
@@ -68,8 +75,9 @@
     <string name="unpair_title">Unpair %1$s?</string>
     <string name="unpair_text">The devices stop syncing, and both forget each other. Pair again to resume.</string>
 
-    <string name="about_version">clipsync %1$s</string>
-    <string name="about_text">Shares the clipboard between your devices over the local network, with no server. Free software under the MIT licence: https://github.com/josevini/phone-to-pc</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_text">Shares the clipboard between your devices over the local network, with no server. Free software under the MIT licence.</string>
+    <string name="about_source">Source code</string>
     <string name="about_notices_title">Open-source components</string>
-    <string name="about_notices">• UniFFI, Mozilla Public License 2.0; its source is at https://github.com/mozilla/uniffi-rs\n• Rust crates of the protocol core: MIT, Apache 2.0, BSD 3-Clause, ISC, Unicode 3.0 licences\n• JNA, Apache License 2.0\n• ZXing, Apache License 2.0\n• AndroidX, Jetpack Compose and Kotlin, Apache License 2.0\n• Material icons, Apache License 2.0</string>
+    <string name="about_notices">• UniFFI, Mozilla Public License 2.0; its source is at https://github.com/mozilla/uniffi-rs\n• Rust crates of the protocol core: MIT, Apache 2.0, BSD 3-Clause, ISC, Unicode 3.0 licences\n• JNA, Apache License 2.0\n• ZXing, Apache License 2.0\n• AndroidX, Jetpack Compose and Kotlin, Apache License 2.0\n• Material Symbols, Apache License 2.0</string>
 </resources>

@@ -10,30 +10,26 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -46,7 +42,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -89,7 +94,6 @@ private sealed interface PairState {
 }
 
 /** Pairs with a PC by scanning the QR code `clipsync pair` shows, or by pasting its link (spec §7.2). */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PairScreen(onDone: () -> Unit) {
     var state by remember { mutableStateOf<PairState>(PairState.Scanning) }
@@ -120,19 +124,14 @@ fun PairScreen(onDone: () -> Unit) {
         node.pairWithUri(uri)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.pair_with_pc)) },
-                navigationIcon = {
-                    IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.cancel)) }
-                },
-            )
-        },
-    ) { padding ->
-        Readable(Modifier.padding(padding)) {
+    CollapsingScaffold(
+        title = stringResource(R.string.pair_with_pc),
+        expandable = false,
+        navigation = { BackButton(onDone, stringResource(R.string.cancel)) },
+    ) {
+        item {
             Column(
-                Modifier.verticalScroll(rememberScrollState()).padding(16.dp).fillMaxWidth(),
+                Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -142,32 +141,41 @@ fun PairScreen(onDone: () -> Unit) {
                     }
 
                     is PairState.Pairing -> {
-                        CircularProgressIndicator(Modifier.padding(top = 32.dp))
-                        Text(stringResource(R.string.pairing_with, current.name), style = MaterialTheme.typography.titleMedium)
-                        OutlinedButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
+                        Hero(
+                            title = stringResource(R.string.pairing_with, current.name),
+                            visual = {
+                                Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(Modifier.fillMaxSize(), strokeWidth = 6.dp)
+                                    Icon(
+                                        painterResource(R.drawable.ic_computer),
+                                        null,
+                                        Modifier.size(40.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            },
+                        ) { OutlinedButton(onClick = onDone) { Text(stringResource(R.string.cancel)) } }
                     }
 
                     is PairState.Paired -> {
-                        Icon(
-                            Icons.Filled.CheckCircle,
-                            null,
-                            Modifier.size(64.dp).padding(top = 16.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            stringResource(R.string.paired_with, current.name),
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(stringResource(R.string.paired_hint), textAlign = TextAlign.Center)
-                        Button(onClick = onDone) { Text(stringResource(R.string.done)) }
+                        Hero(
+                            title = stringResource(R.string.paired_with, current.name),
+                            text = stringResource(R.string.paired_hint),
+                            visual = { LargeIcon(R.drawable.ic_check_circle_filled) },
+                        ) { Button(onClick = onDone, Modifier.widthIn(min = 160.dp)) { Text(stringResource(R.string.done)) } }
                     }
 
                     is PairState.Failed -> {
-                        Icon(Icons.Filled.Warning, null, Modifier.size(64.dp).padding(top = 16.dp), tint = MaterialTheme.colorScheme.error)
-                        Text(stringResource(message(current.failure)), textAlign = TextAlign.Center)
-                        Button(onClick = { state = PairState.Scanning }) { Text(stringResource(R.string.try_again)) }
-                        OutlinedButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
+                        Hero(
+                            title = stringResource(R.string.pair_failed),
+                            text = stringResource(message(current.failure)),
+                            visual = { LargeIcon(R.drawable.ic_error_filled, tint = MaterialTheme.colorScheme.error) },
+                        ) {
+                            Button(onClick = { state = PairState.Scanning }, Modifier.widthIn(min = 160.dp)) {
+                                Text(stringResource(R.string.try_again))
+                            }
+                            TextButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
+                        }
                     }
                 }
             }
@@ -197,31 +205,80 @@ private fun Scan(
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { cameraAllowed = it }
     var link by rememberSaveable { mutableStateOf("") }
 
-    Text(stringResource(R.string.pair_instructions), textAlign = TextAlign.Center)
+    Text(
+        stringResource(R.string.pair_instructions),
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+    Command("clipsync pair")
+    val shape = MaterialTheme.shapes.extraLarge
     val frame =
         Modifier
             .widthIn(max = 360.dp)
             .fillMaxWidth()
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
     if (cameraAllowed) {
-        QrScanner(onCode = onCode, modifier = frame)
+        QrScanner(onCode = onCode, modifier = frame.clip(shape).viewfinder(MaterialTheme.colorScheme.primary))
     } else {
-        Button(onClick = { request.launch(Manifest.permission.CAMERA) }) { Text(stringResource(R.string.allow_camera)) }
+        Surface(frame, shape = shape, color = LocalGroupColor.current) {
+            Column(
+                Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                LargeIcon(R.drawable.ic_photo_camera)
+                FilledTonalButton(onClick = { request.launch(Manifest.permission.CAMERA) }) { Text(stringResource(R.string.allow_camera)) }
+            }
+        }
     }
     if (invalid) {
-        Text(stringResource(R.string.invalid_code), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_error_filled), null, tint = MaterialTheme.colorScheme.error)
+            Text(stringResource(R.string.invalid_code), color = MaterialTheme.colorScheme.error)
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        HorizontalDivider(Modifier.weight(1f))
+        Text(stringResource(R.string.or), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        HorizontalDivider(Modifier.weight(1f))
     }
     OutlinedTextField(
         value = link,
         onValueChange = { link = it },
         label = { Text(stringResource(R.string.pairing_link)) },
         placeholder = { Text("clipsync://pair?…") },
+        leadingIcon = { Icon(painterResource(R.drawable.ic_link), null) },
         singleLine = true,
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth(),
     )
-    Button(onClick = { onCode(link) }, enabled = link.isNotBlank()) { Text(stringResource(R.string.pair)) }
+    Button(onClick = { onCode(link) }, enabled = link.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.pair))
+    }
 }
+
+/** Corner brackets over the camera preview, the familiar sign of a code scanner. */
+private fun Modifier.viewfinder(color: Color) =
+    drawWithContent {
+        drawContent()
+        val stroke = 4.dp.toPx()
+        val radius = 36.dp.toPx()
+        val arm = radius + 24.dp.toPx()
+        val inset = 20.dp.toPx()
+        val box = Size(size.width - 2 * inset, size.height - 2 * inset)
+        for ((x, y) in listOf(0f to 0f, size.width - arm to 0f, 0f to size.height - arm, size.width - arm to size.height - arm)) {
+            clipRect(x, y, x + arm, y + arm) {
+                drawRoundRect(
+                    color,
+                    Offset(inset, inset),
+                    box,
+                    CornerRadius(radius - inset / 2),
+                    style = Stroke(stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+    }
 
 /** The back camera, reporting the first clipsync QR code it sees. */
 @Composable
