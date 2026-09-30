@@ -1,6 +1,6 @@
 import { answered, countdown, isPairingLink, onPairingEvent, type PairState, qrPath, showingCode } from "./pairing.ts";
 import type { Invite, PairingEvent, Shown } from "./status.ts";
-import { devicePage, type Home, home } from "./view.ts";
+import { devicePage, type Home, home, nameProblem } from "./view.ts";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -37,6 +37,7 @@ function drawHome(model: Home): void {
   thisDevice.hidden = model.daemonDown;
   paired.hidden = model.daemonDown;
   deviceName.textContent = model.device?.name ?? "";
+  if (model.daemonDown) renameForm.hidden = true;
   deviceId.textContent = model.device?.id ?? "";
   sharing.checked = model.sharing ?? false;
   sharing.disabled = model.sharing === null;
@@ -81,6 +82,46 @@ sharing.addEventListener("change", () => {
     error.textContent = `Could not change sharing: ${String(e)}`;
     error.hidden = false;
   });
+});
+
+// ---------------------------------------------------------------- renaming this device
+
+const renameOpen = element("rename-open");
+const renameForm = element<HTMLFormElement>("rename");
+const renameName = element<HTMLInputElement>("rename-name");
+const renameHint = element("rename-hint");
+const renameSave = element<HTMLButtonElement>("rename-save");
+
+function drawRename(failure: string | null = null): void {
+  const problem = failure ?? nameProblem(renameName.value);
+  renameHint.textContent = problem ?? "Other devices see this name.";
+  renameHint.classList.toggle("problem", problem !== null);
+  renameSave.disabled = nameProblem(renameName.value) !== null;
+}
+
+function openRename(): void {
+  renameName.value = last?.device?.name ?? "";
+  renameForm.hidden = false;
+  drawRename();
+  renameName.focus();
+  renameName.select();
+}
+
+function closeRename(): void {
+  renameForm.hidden = true;
+  renameOpen.focus();
+}
+
+renameOpen.addEventListener("click", openRename);
+renameName.addEventListener("input", () => drawRename());
+element("rename-cancel").addEventListener("click", closeRename);
+renameForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (nameProblem(renameName.value) !== null) return;
+  renameSave.disabled = true;
+  invoke("rename", { name: renameName.value.trim() })
+    .then(closeRename)
+    .catch((e: unknown) => drawRename(`Could not rename: ${String(e)}`));
 });
 
 // ---------------------------------------------------------------- starting with the session
@@ -291,7 +332,8 @@ element("enter-link").addEventListener("click", enterLink);
 element("pair-cancel").addEventListener("click", cancel);
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  if (pair !== null) cancel();
+  if (!renameForm.hidden) closeRename();
+  else if (pair !== null) cancel();
   else if (confirmingUnpair) askUnpair(false);
   else if (device !== null) closeDevice();
 });

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { Device, Shown, Status } from "./status.ts";
-import { devicePage, home } from "./view.ts";
+import { devicePage, home, nameProblem } from "./view.ts";
 
 function status(paused: boolean, devices: Device[]): Status {
   return { id: "86224755".padEnd(64, "0"), name: "book2", port: 47823, addrs: [], pairing: false, paused, devices };
@@ -62,4 +62,13 @@ test("a device's page shows its full ID and whether it is connected", () => {
 test("a device that is no longer paired has no page", () => {
   assert.equal(devicePage(status(false, []), "a".repeat(64)), null);
   assert.equal(devicePage(null, "a".repeat(64)), null);
+});
+
+test("a device name has 1 to 64 bytes once trimmed", () => {
+  assert.equal(nameProblem("Meu PC"), null);
+  assert.equal(nameProblem("  "), "Enter a name.");
+  assert.equal(nameProblem("a".repeat(64)), null);
+  assert.equal(nameProblem("a".repeat(65)), "Use at most 64 bytes.");
+  // 22 three-byte characters are 66 bytes.
+  assert.equal(nameProblem("日".repeat(22)), "Use at most 64 bytes.");
 });

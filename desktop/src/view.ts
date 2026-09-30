@@ -49,3 +49,11 @@ export function devicePage(status: Status | null, id: string): DevicePage | null
   if (!device) return null;
   return { name: device.name, id: device.id, state: device.connected ? "Connected" : "Not connected", connected: device.connected };
 }
+
+/** Why `name` cannot be this device's name, or null: the protocol takes 1 to 64 bytes of UTF-8, once trimmed. */
+export function nameProblem(name: string): string | null {
+  const bytes = new TextEncoder().encode(name.trim()).length;
+  if (bytes === 0) return "Enter a name.";
+  if (bytes > 64) return "Use at most 64 bytes.";
+  return null;
+}

@@ -42,7 +42,8 @@ The icon is coloured while this device shares the clipboard with a connected dev
 ## The window
 
 The window shows this device (its name and the first characters of its ID), the **Share the clipboard** switch, and
-the paired devices with whether each is connected. Both follow the daemon as it changes, such as a device connecting or
+the paired devices with whether each is connected. **Rename**, on this device's row, changes its name as
+`clipsync rename` does (see [Renaming](devices.md#renaming)). Both follow the daemon as it changes, such as a device connecting or
 a pause made from the terminal.
 
 When the daemon is not running, the window says so and shows the command that starts it; the app finds the daemon

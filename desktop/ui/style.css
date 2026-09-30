@@ -377,3 +377,35 @@ button.row.device:focus-visible {
 #unpair-confirm {
   margin-top: 16px;
 }
+
+button.row.edit {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+button.row.edit:focus-visible {
+  outline-offset: -3px;
+}
+
+.edit-label {
+  color: var(--primary);
+}
+
+#rename {
+  margin-top: 12px;
+}
+
+#rename label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+#rename p {
+  margin: 8px 4px 0;
+}
+
+#rename p.problem {
+  color: var(--error);
+}

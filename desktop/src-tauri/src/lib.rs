@@ -62,6 +62,12 @@ async fn set_paused(app: State<'_, App>, paused: bool) -> Result<(), String> {
     pause(&app.socket, paused).await
 }
 
+/// Renames this device; other devices learn the name as they reconnect.
+#[tauri::command]
+async fn rename(app: State<'_, App>, name: String) -> Result<(), String> {
+    daemon::rename(&app.socket, &name).await.map_err(|e| format!("{e:#}"))
+}
+
 /// Whether the app starts with the session.
 #[tauri::command]
 fn autostart(app: State<'_, App>) -> bool {
@@ -155,7 +161,8 @@ pub fn run() {
             stop_pairing,
             unpair,
             autostart,
-            set_autostart
+            set_autostart,
+            rename
         ])
         .setup(move |app| {
             let items = build_tray(app.handle())?;

@@ -25,12 +25,13 @@
         <section id="this-device">
           <h2>This device</h2>
           <div class="group">
-            <div class="row">
+            <button id="rename-open" tabindex="0" type="button" class="row edit">
               <div>
                 <div id="device-name" class="title"></div>
                 <div id="device-id" class="subtitle"></div>
               </div>
-            </div>
+              <span class="edit-label">Rename</span>
+            </button>
             <label class="row">
               <div>
                 <div class="title">Share the clipboard</div>
@@ -40,6 +41,16 @@
             </label>
           </div>
         </section>
+
+        <form id="rename" class="card" hidden>
+          <label for="rename-name" class="title">Device name</label>
+          <input id="rename-name" type="text" autocomplete="off" spellcheck="false" />
+          <p id="rename-hint" class="subtitle" aria-live="polite"></p>
+          <div class="buttons">
+            <button id="rename-cancel" tabindex="0" type="button" class="text">Cancel</button>
+            <button id="rename-save" tabindex="0" type="submit" class="primary">Save</button>
+          </div>
+        </form>
 
         <section id="paired">
           <h2>Paired devices</h2>

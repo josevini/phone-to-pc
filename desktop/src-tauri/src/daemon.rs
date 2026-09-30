@@ -43,3 +43,12 @@ pub async fn unpair(socket: &Path, id: &str) -> Result<String> {
         other => bail!("unexpected reply from the daemon: {other:?}"),
     }
 }
+
+/// Renames this device through the daemon at `socket`.
+pub async fn rename(socket: &Path, name: &str) -> Result<()> {
+    match request(socket, &Request::Rename { name: name.into() }).await? {
+        Reply::Ok => Ok(()),
+        Reply::Error { message } => bail!(message),
+        other => bail!("unexpected reply from the daemon: {other:?}"),
+    }
+}

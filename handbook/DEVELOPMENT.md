@@ -155,10 +155,10 @@ cargo deny check                        # deny.toml: linux/'s policy plus Tauri'
 
 | Suite | What it runs |
 |-------|--------------|
-| `src/view.test.ts` | What the window shows for a status: this device, the switch, the paired devices, a stopped daemon, a device's page |
+| `src/view.test.ts` | What the window shows for a status: this device, the switch, the paired devices, a stopped daemon, a device's page, device names |
 | `src/pairing.test.ts` | A pairing's states and events, the countdown, the QR path and pairing links |
 | `clipsync-desktop` unit tests | `TrayView`: the tray's summary line, switch and icon for each status; the autostart entry, where it goes and how its path is quoted; the QR code's modules |
-| `src-tauri/tests/daemon.rs` | `watch` and `request` against a real daemon with an in-memory clipboard: the status and its changes, a daemon that stops, one that starts later, unpairing |
+| `src-tauri/tests/daemon.rs` | `watch` and `request` against a real daemon with an in-memory clipboard: the status and its changes, a daemon that stops, one that starts later, unpairing, renaming |
 | `src-tauri/tests/pairing.rs` | Pairing between two real daemons: a code shown and used, a pasted link, comparing codes (confirmed and refused), cancelling, pairing mode ending, a stale link |
 
 The window and the tray are checked by hand. To do it without touching your desktop, run the app, and a daemon for

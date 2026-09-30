@@ -5,7 +5,7 @@ mod support;
 use std::path::Path;
 use std::time::Duration;
 
-use clipsync_desktop::daemon::{request, unpair, watch};
+use clipsync_desktop::daemon::{rename, request, unpair, watch};
 use clipsyncd::ipc::{Reply, Request, StatusView};
 use support::Daemon;
 use tokio::sync::mpsc;
@@ -81,4 +81,14 @@ async fn unpairing_forgets_the_device_on_both_sides() {
     assert!(a.handle.status().await.devices.is_empty());
     let err = unpair(&a.socket, &b_id.to_string()).await.unwrap_err();
     assert!(format!("{err:#}").contains("no paired device"), "{err:#}");
+}
+
+#[tokio::test]
+async fn renaming_changes_the_name_or_says_why_not() {
+    let tmp = tempfile::tempdir().unwrap();
+    let a = Daemon::start(tmp.path(), "alpha").await;
+    rename(&a.socket, "Meu PC").await.unwrap();
+    assert_eq!(a.handle.status().await.name, "Meu PC");
+    let err = rename(&a.socket, "").await.unwrap_err();
+    assert!(format!("{err:#}").contains("1 to 64 bytes"), "{err:#}");
 }
