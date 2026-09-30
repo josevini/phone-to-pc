@@ -41,6 +41,7 @@ shows the daemon's status in the tray and a window, and pauses it.
 | `linux/crates/clipsyncd/` | The daemon binary |
 | `android/` | Gradle build of the Android side: `bindings` (generated Kotlin), `session` (the protocol host in plain Kotlin), `app` (the Android app) |
 | `desktop/` | The Linux desktop app (Tauri): `src-tauri/` (its Rust backend, a workspace of its own), `src/` (the window's TypeScript), `ui/` (its HTML and CSS), `dist/` (its menu entry) |
+| `dist/aur/clipsync-git/` | The Arch Linux package: a `PKGBUILD` that builds `main` |
 | `linux/deny.toml` | `cargo-deny` policy: advisories, permissive licences, crate sources |
 | `linux/dist/clipsyncd.service` | systemd user unit |
 | `handbook/` | This file, the architecture decisions, development setup, user flows |

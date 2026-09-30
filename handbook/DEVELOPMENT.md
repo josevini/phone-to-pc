@@ -171,6 +171,21 @@ window, start both on one private bus (`dbus-daemon --session --fork --print-add
 bus to see it: its menu can then be read and clicked with `busctl` (`com.canonical.dbusmenu`). A private D-Bus
 session mounts `gvfs` in the runtime directory; unmount it with `fusermount3 -u` before deleting the directory.
 
+## Arch Linux package
+
+`dist/aur/clipsync-git/PKGBUILD` builds a package from `main` with the daemon, the CLI and the desktop app, the
+systemd user unit, the menu entry, the icon and the licence. The Rust and npm dependencies are fetched in
+`prepare()`, from the lock files, and the builds run offline (`--frozen`). To build it without installing anything:
+
+```sh
+mkdir -p /tmp/cs-pkg && cp dist/aur/clipsync-git/PKGBUILD /tmp/cs-pkg/ && cd /tmp/cs-pkg
+makepkg                        # add --nodeps when cargo or node come from rustup or mise, not pacman
+tar -tf clipsync-git-*.pkg.tar.zst
+```
+
+Publishing to the AUR also needs the `.SRCINFO` that `makepkg --printsrcinfo` writes, generated when publishing. CI
+does not build the package.
+
 ## Running the daemon
 
 `cargo run -p clipsyncd` runs the daemon on your real clipboard, with your real identity and state under

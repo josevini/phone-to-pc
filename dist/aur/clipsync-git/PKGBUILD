@@ -1,0 +1,59 @@
+# Maintainer: Vinicius Silva <ferreiravini468 at gmail dot com>
+
+pkgname=clipsync-git
+pkgver=r0.0000000
+pkgrel=1
+pkgdesc='Share the clipboard between Linux PCs and Android phones on the local network'
+arch=('x86_64' 'aarch64')
+url='https://github.com/josevini/phone-to-pc'
+license=('MIT')
+depends=('gcc-libs' 'glibc' 'gtk3' 'hicolor-icon-theme' 'libayatana-appindicator' 'webkit2gtk-4.1')
+makedepends=('cargo' 'git' 'nodejs' 'npm')
+# GCC's LTO would turn ring's C code into bitcode that the Rust linker cannot read.
+options=('!lto')
+provides=('clipsync')
+conflicts=('clipsync')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$pkgname"
+  printf 'r%s.%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+  cd "$pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  local target
+  target="$(rustc -vV | sed -n 's/host: //p')"
+  cargo fetch --locked --target "$target" --manifest-path linux/Cargo.toml
+  cargo fetch --locked --target "$target" --manifest-path desktop/src-tauri/Cargo.toml
+  npm ci --prefix desktop --no-audit --no-fund
+}
+
+build() {
+  cd "$pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo build --frozen --release --manifest-path linux/Cargo.toml -p clipsyncd
+  # `tauri build` compiles the window's TypeScript and embeds it in the binary.
+  (cd desktop && npm exec -- tauri build --no-bundle -- --frozen)
+}
+
+check() {
+  cd "$pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  # The daemon's other suites need a compositor (headless Sway); the protocol core's need nothing.
+  cargo test --frozen --release --manifest-path linux/Cargo.toml -p clipsync-core
+  npm test --prefix desktop
+}
+
+package() {
+  cd "$pkgname"
+  install -Dm755 linux/target/release/clipsyncd "$pkgdir/usr/bin/clipsyncd"
+  install -Dm755 linux/target/release/clipsync "$pkgdir/usr/bin/clipsync"
+  install -Dm755 desktop/src-tauri/target/release/clipsync-desktop "$pkgdir/usr/bin/clipsync-desktop"
+  install -Dm644 linux/dist/clipsyncd.service "$pkgdir/usr/lib/systemd/user/clipsyncd.service"
+  install -Dm644 desktop/dist/clipsync-desktop.desktop "$pkgdir/usr/share/applications/clipsync-desktop.desktop"
+  install -Dm644 desktop/src-tauri/icons/icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/clipsync.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
