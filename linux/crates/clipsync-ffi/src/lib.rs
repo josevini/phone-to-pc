@@ -216,6 +216,7 @@ pub enum LocalChange {
     Unchanged,
     Empty,
     TooLarge,
+    Paused,
 }
 
 impl From<eng::LocalChange> for LocalChange {
@@ -225,6 +226,7 @@ impl From<eng::LocalChange> for LocalChange {
             eng::LocalChange::Unchanged => LocalChange::Unchanged,
             eng::LocalChange::Empty => LocalChange::Empty,
             eng::LocalChange::TooLarge => LocalChange::TooLarge,
+            eng::LocalChange::Paused => LocalChange::Paused,
         }
     }
 }
@@ -260,6 +262,15 @@ impl Engine {
 
     pub fn connected_peers(&self) -> Vec<String> {
         self.lock().connected_peers().iter().map(ToString::to_string).collect()
+    }
+
+    /// Pauses or resumes sharing: connections stay up, but clips are neither sent nor applied.
+    pub fn set_paused(&self, paused: bool) {
+        self.lock().set_paused(paused);
+    }
+
+    pub fn paused(&self) -> bool {
+        self.lock().paused()
     }
 
     pub fn pairing_active(&self, now_ms: u64) -> bool {

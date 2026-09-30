@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use clipsync_core::DeviceId;
-use clipsync_core::engine::Event;
+use clipsync_core::engine::{Event, LocalChange};
 use clipsyncd::clipboard::MemoryClipboard;
 use clipsyncd::daemon::{self, DaemonConfig, DaemonEvent, DaemonHandle};
 use clipsyncd::storage::{Config, Dirs, Identity, State};
@@ -190,8 +190,40 @@ async fn sending_text_reaches_connected_peers() {
     let (a, b) = (Node::start("alpha", vec![]).await, Node::start("beta", vec![]).await);
     pair_with_token(&a, &b).await;
     let outcome = a.handle.send_text("sent from the cli".into()).await;
-    assert!(matches!(outcome, clipsync_core::engine::LocalChange::Sent { peers: 1, .. }), "{outcome:?}");
+    assert!(matches!(outcome, LocalChange::Sent { peers: 1, .. }), "{outcome:?}");
     eventually("b receives", || async { b.clipboard.contents().as_deref() == Some("sent from the cli") }).await;
+}
+
+#[tokio::test]
+async fn a_paused_daemon_stays_connected_but_neither_sends_nor_applies() {
+    let (a, b) = (Node::start("alpha", vec![]).await, Node::start("beta", vec![]).await);
+    pair_with_token(&a, &b).await;
+    a.handle.set_paused(true).await;
+    assert!(a.handle.status().await.paused);
+
+    a.clipboard.copy("private");
+    b.clipboard.copy("from beta");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(a.clipboard.contents().as_deref(), Some("private"));
+    assert_eq!(b.clipboard.contents().as_deref(), Some("from beta"));
+    assert_eq!(a.handle.send_text("sent while paused".into()).await, LocalChange::Paused);
+    assert!(a.connected_to(&b.id().await).await);
+
+    a.handle.set_paused(false).await;
+    assert!(!a.handle.status().await.paused);
+    a.clipboard.copy("shared again");
+    eventually("b receives", || async { b.clipboard.contents().as_deref() == Some("shared again") }).await;
+}
+
+#[tokio::test]
+async fn pausing_is_kept_across_a_restart() {
+    let mut a = Node::start("alpha", vec![]).await;
+    a.handle.set_paused(true).await;
+    assert!(a.saved_state().paused);
+    a.restart("alpha", vec![]).await;
+    assert!(a.handle.status().await.paused);
+    a.handle.set_paused(false).await;
+    assert!(!a.saved_state().paused);
 }
 
 #[tokio::test]

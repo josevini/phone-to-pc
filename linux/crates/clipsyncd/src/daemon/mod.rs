@@ -63,6 +63,8 @@ pub struct Status {
     /// Addresses other devices can reach this one on.
     pub addrs: Vec<SocketAddr>,
     pub pairing: bool,
+    /// Sharing is paused: clips are neither sent nor applied.
+    pub paused: bool,
     pub devices: Vec<DeviceStatus>,
 }
 
@@ -115,6 +117,7 @@ pub(crate) enum Cmd {
         accept: bool,
     },
     SendText(String, oneshot::Sender<LocalChange>),
+    SetPaused(bool, oneshot::Sender<()>),
     Unpair(DeviceId, oneshot::Sender<bool>),
     Shutdown(oneshot::Sender<()>),
 }
@@ -162,6 +165,11 @@ impl DaemonHandle {
     /// Sends `text` to the connected peers as if it had been copied here.
     pub async fn send_text(&self, text: String) -> LocalChange {
         self.ask(|tx| Cmd::SendText(text, tx)).await.unwrap_or(LocalChange::Unchanged)
+    }
+
+    /// Pauses or resumes sharing; paired devices stay connected. Kept across restarts.
+    pub async fn set_paused(&self, paused: bool) {
+        let _ = self.ask(|tx| Cmd::SetPaused(paused, tx)).await;
     }
 
     /// Unpairs `peer`; false if it was not paired.
@@ -220,7 +228,8 @@ pub async fn spawn(
 
     let me = LocalDevice { id: cfg.identity.id, name: cfg.config.name.clone(), platform: cfg.platform.clone() };
     let paired = state.paired.iter().map(|p| PairedDevice { id: p.id, name: p.name.clone() }).collect();
-    let engine = Engine::new(me.clone(), paired, state.lamport);
+    let mut engine = Engine::new(me.clone(), paired, state.lamport);
+    engine.set_paused(state.paused);
     let mut targets = HashMap::new();
     for addr in &cfg.config.peers {
         targets.insert(*addr, Target::new(None));
@@ -380,6 +389,15 @@ impl Actor {
             Cmd::SendText(text, reply) => {
                 let _ = reply.send(self.engine.local_clipboard_changed(text, now));
             }
+            Cmd::SetPaused(paused, reply) => {
+                self.engine.set_paused(paused);
+                if self.state.paused != paused {
+                    self.state.paused = paused;
+                    self.save();
+                    info!(paused, "sharing paused or resumed");
+                }
+                let _ = reply.send(());
+            }
             Cmd::Unpair(peer, reply) => {
                 let known = self.state.paired.iter().any(|p| p.id == peer);
                 self.engine.unpair(&peer);
@@ -490,7 +508,8 @@ impl Actor {
             .collect();
         let (id, name) = (self.me.id, self.me.name.clone());
         let (port, addrs) = (self.local.port(), advertised_addrs(self.local));
-        Status { id, name, port, addrs, pairing: self.engine.pairing_active(now), devices }
+        let (pairing, paused) = (self.engine.pairing_active(now), self.engine.paused());
+        Status { id, name, port, addrs, pairing, paused, devices }
     }
 
     fn invite(&self, token: clipsync_core::Hex16) -> Result<PairingInvite> {

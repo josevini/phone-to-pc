@@ -23,6 +23,7 @@
     <string name="send_empty">Nothing to send.</string>
     <string name="send_too_large">Not sent: text over 1 MiB is not synced.</string>
     <string name="send_sensitive">Not sent: the copied text is marked as sensitive, such as a password.</string>
+    <string name="send_paused">Not sent: sharing is paused.</string>
 
     <string name="about">About</string>
     <string name="back">Back</string>

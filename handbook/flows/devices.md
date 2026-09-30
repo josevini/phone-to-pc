@@ -3,7 +3,8 @@
 ## Status
 
 `clipsync` (or `clipsync status`) shows this device, where other devices can reach it,
-whether pairing mode is open, and the paired devices:
+whether pairing mode is open, whether sharing is paused (see
+[Pausing](syncing.md#pausing)), and the paired devices:
 
 ```
 $ clipsync

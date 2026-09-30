@@ -339,6 +339,31 @@ fn a_stale_clip_is_acknowledged_as_not_applied() {
     assert_eq!(net.seen_b.clipboard, vec!["mine".to_string()]);
 }
 
+#[test]
+fn a_paused_device_stays_connected_but_neither_sends_nor_applies() {
+    let mut net = Net::paired();
+    net.a_dials_b(Intent::Session);
+    assert!(!net.b.paused());
+    net.b.set_paused(true);
+    assert!(net.b.paused());
+
+    assert_eq!(net.b.local_clipboard_changed("private".into(), net.now), LocalChange::Paused);
+    net.pump();
+    assert!(net.seen_a.clipboard.is_empty());
+
+    net.a.local_clipboard_changed("from alpha".into(), net.now);
+    net.pump();
+    assert!(net.seen_b.clipboard.is_empty());
+    assert!(has(&net.seen_b.events, &Event::ClipReceived { from: id(A), applied: false }));
+    assert!(has(&net.seen_a.events, &Event::ClipDelivered { to: id(B), applied: false }));
+    assert!(net.a.is_connected(&id(B)) && net.b.is_connected(&id(A)));
+
+    net.b.set_paused(false);
+    assert_eq!(net.b.local_clipboard_changed("shared".into(), net.now), LocalChange::Sent { seq: 2, peers: 1 });
+    net.pump();
+    assert_eq!(net.seen_a.clipboard, vec!["shared".to_string()]);
+}
+
 // ---------------------------------------------------------------- keepalive (spec §7.1)
 
 #[test]

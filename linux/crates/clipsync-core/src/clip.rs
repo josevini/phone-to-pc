@@ -20,6 +20,8 @@ pub fn text_digest(text: &str) -> Hex32 {
 pub enum LocalOutcome {
     Empty,
     TooLarge,
+    /// Sharing is paused: nothing is sent.
+    Paused,
     /// Same content as the known clipboard: an echo or a re-copy. Nothing to send.
     Unchanged,
     /// Send this clip to every connected paired peer.
@@ -34,12 +36,14 @@ pub enum RemoteOutcome {
     SameContent,
     /// Write the clip's text to the local clipboard.
     Apply,
+    /// Sharing is paused; drop it.
+    Paused,
 }
 
 impl RemoteOutcome {
     /// Value of `ack.applied` for this outcome.
     pub fn applied(self) -> bool {
-        !matches!(self, RemoteOutcome::Stale)
+        !matches!(self, RemoteOutcome::Stale | RemoteOutcome::Paused)
     }
 }
 
@@ -56,12 +60,13 @@ pub struct ClipTracker {
     self_id: DeviceId,
     lamport: u64,
     current: Option<Current>,
+    paused: bool,
 }
 
 impl ClipTracker {
     /// `lamport` is the persisted counter from the previous run, or 0.
     pub fn new(self_id: DeviceId, lamport: u64) -> Self {
-        Self { self_id, lamport, current: None }
+        Self { self_id, lamport, current: None, paused: false }
     }
 
     /// Current Lamport counter; persist it and send it in `hello.seq`.
@@ -73,8 +78,22 @@ impl ClipTracker {
         self.lamport = self.lamport.max(seq);
     }
 
+    /// Pauses or resumes sharing: while paused, nothing is sent or applied.
+    pub fn set_paused(&mut self, paused: bool) {
+        self.paused = paused;
+    }
+
+    pub fn paused(&self) -> bool {
+        self.paused
+    }
+
     /// The local clipboard changed to `text`. `ts_ms` is the current Unix time in ms.
     pub fn local_change(&mut self, text: String, ts_ms: u64) -> LocalOutcome {
+        if self.paused {
+            // The clipboard now holds text the other devices never saw.
+            self.current = None;
+            return LocalOutcome::Paused;
+        }
         if text.is_empty() {
             return LocalOutcome::Empty;
         }
@@ -101,6 +120,9 @@ impl ClipTracker {
     /// A validated clip arrived from a paired peer.
     pub fn receive(&mut self, clip: &Clip) -> RemoteOutcome {
         self.lamport = self.lamport.max(clip.seq);
+        if self.paused {
+            return RemoteOutcome::Paused;
+        }
         let prev = self.current;
         if prev.is_some_and(|c| (clip.seq, clip.origin) <= (c.seq, c.origin)) {
             return RemoteOutcome::Stale;
@@ -115,9 +137,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_stale_clips_are_acked_as_not_applied() {
+    fn only_stale_and_paused_clips_are_acked_as_not_applied() {
         assert!(RemoteOutcome::Apply.applied());
         assert!(RemoteOutcome::SameContent.applied());
         assert!(!RemoteOutcome::Stale.applied());
+        assert!(!RemoteOutcome::Paused.applied());
     }
 }

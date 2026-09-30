@@ -43,6 +43,9 @@ pub enum Request {
     Send {
         text: String,
     },
+    /// Stops sharing the clipboard, keeping paired devices connected.
+    Pause,
+    Resume,
     /// Unpairs the device named by `device`: its ID, an ID prefix, or its name.
     Unpair {
         device: String,
@@ -72,6 +75,7 @@ pub struct StatusView {
     pub port: u16,
     pub addrs: Vec<String>,
     pub pairing: bool,
+    pub paused: bool,
     pub devices: Vec<DeviceView>,
 }
 
@@ -90,6 +94,7 @@ impl From<Status> for StatusView {
             port: s.port,
             addrs: s.addrs.iter().map(|a| a.to_string()).collect(),
             pairing: s.pairing,
+            paused: s.paused,
             devices: s
                 .devices
                 .into_iter()
@@ -211,8 +216,13 @@ async fn handle_request(request: Request, daemon: &DaemonHandle, out: &mpsc::Unb
                 LocalChange::Unchanged => ("unchanged", 0),
                 LocalChange::Empty => ("empty", 0),
                 LocalChange::TooLarge => ("too_large", 0),
+                LocalChange::Paused => ("paused", 0),
             };
             Reply::Sent { outcome: outcome.into(), peers }
+        }
+        Request::Pause | Request::Resume => {
+            daemon.set_paused(request == Request::Pause).await;
+            Reply::Ok
         }
         Request::Unpair { device } => {
             let status = daemon.status().await;

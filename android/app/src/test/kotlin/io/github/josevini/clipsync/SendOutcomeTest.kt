@@ -28,6 +28,7 @@ class SendOutcomeTest {
                 LocalChange.Unchanged to SendOutcome.Unchanged,
                 LocalChange.Empty to SendOutcome.Empty,
                 LocalChange.TooLarge to SendOutcome.TooLarge,
+                LocalChange.Paused to SendOutcome.Paused,
             )
         for ((change, outcome) in cases) assertEquals(outcome, sendIfConnected(connected = true) { change })
     }

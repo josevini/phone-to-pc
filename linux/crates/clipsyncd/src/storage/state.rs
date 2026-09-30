@@ -1,4 +1,5 @@
-//! `state.json`: what the daemon remembers on its own — paired devices and the Lamport counter.
+//! `state.json`: what the daemon remembers on its own — paired devices, the Lamport counter and whether sharing is
+//! paused.
 
 use std::path::Path;
 
@@ -10,6 +11,8 @@ use serde::{Deserialize, Serialize};
 pub struct State {
     pub lamport: u64,
     pub paired: Vec<PairedRecord>,
+    #[serde(default)]
+    pub paused: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,10 +52,21 @@ mod tests {
     fn saves_and_reloads() {
         let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path().join("data/state.json");
-        let state =
-            State { lamport: 42, paired: vec![PairedRecord { id: DeviceId(Hex([7; 32])), name: "phone".into() }] };
+        let state = State {
+            lamport: 42,
+            paired: vec![PairedRecord { id: DeviceId(Hex([7; 32])), name: "phone".into() }],
+            paused: true,
+        };
         state.save(&path).unwrap();
         assert_eq!(State::load(&path).unwrap(), state);
+    }
+
+    #[test]
+    fn a_file_without_the_paused_flag_is_not_paused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("state.json");
+        std::fs::write(&path, r#"{"lamport":3,"paired":[]}"#).unwrap();
+        assert_eq!(State::load(&path).unwrap(), State { lamport: 3, paired: vec![], paused: false });
     }
 
     #[test]

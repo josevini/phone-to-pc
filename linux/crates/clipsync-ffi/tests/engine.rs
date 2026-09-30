@@ -101,6 +101,26 @@ fn local_changes_report_why_nothing_was_sent() {
 }
 
 #[test]
+fn a_paused_engine_stays_connected_but_neither_sends_nor_applies() {
+    let a = engine(A, "phone", vec![PairedDevice { id: B.into(), name: "laptop".into() }]);
+    let b = engine(B, "laptop", vec![PairedDevice { id: A.into(), name: "phone".into() }]);
+    let mut pair = Pair::connect(a, b, Intent::Session);
+    pair.a.set_paused(true);
+    assert!(pair.a.paused());
+
+    assert_eq!(pair.a.local_clipboard_changed("private".into(), 0), LocalChange::Paused);
+    pair.b.local_clipboard_changed("from laptop".into(), 0);
+    pair.pump();
+    assert!(pair.seen_a.clipboard.is_empty() && pair.seen_b.clipboard.is_empty());
+    assert!(pair.seen_b.events.contains(&EngineEvent::ClipDelivered { to: A.into(), applied: false }));
+    assert!(pair.a.is_connected(B.into()).unwrap());
+
+    pair.a.set_paused(false);
+    assert!(!pair.a.paused());
+    assert_eq!(pair.a.local_clipboard_changed("shared".into(), 0), LocalChange::Sent { seq: 2, peers: 1 });
+}
+
+#[test]
 fn a_sas_pairing_shows_the_same_code_on_both_sides_and_needs_both_confirmations() {
     let (a, b) = (engine(A, "phone", vec![]), engine(B, "laptop", vec![]));
     b.start_pairing(0);

@@ -4,10 +4,10 @@ What the code does **today**. The reasoning behind choices lives in
 [Architecture decisions](ARCHITECTURE_DECISIONS.md), and the wire protocol in [`spec/protocol.md`](../spec/protocol.md).
 
 Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired devices over mutual TLS and finds them
-with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text and unpairs.
-The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the phone's
-clipboard; it sends text chosen in the text-selection menu or the share sheet, and the clipboard's text from a Quick
-Settings tile or the notification.
+with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text, pauses
+sharing and unpairs. The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the
+phone's clipboard; it sends text chosen in the text-selection menu or the share sheet, and the clipboard's text from a
+Quick Settings tile or the notification.
 
 ## Big picture
 
@@ -56,19 +56,19 @@ the Android app share it through UniFFI, doing its own I/O around it (see
 |--------|----------------|
 | `message.rs` | Message types (`hello`, `clip`, `ack`, `ping`, `pair_*`, …) and the validation rules of spec §5 |
 | `frame.rs` | Length-prefixed JSON framing; `FrameDecoder` takes bytes as they arrive and yields messages |
-| `engine.rs` | `Engine`: the protocol state of every connection (spec §5–§7) — hello checks, sessions, clips and acks, keepalive, the duplicate-connection rule, token and SAS pairing, unpairing |
-| `clip.rs` | `ClipTracker`: Lamport ordering and echo suppression (spec §6), deciding emit / apply / ignore |
+| `engine.rs` | `Engine`: the protocol state of every connection (spec §5–§7) — hello checks, sessions, clips and acks, pausing, keepalive, the duplicate-connection rule, token and SAS pairing, unpairing |
+| `clip.rs` | `ClipTracker`: Lamport ordering, echo suppression and pausing (spec §6), deciding emit / apply / ignore |
 | `pairing.rs` | SAS commitment and 6-digit code (spec §7.3), pairing URI parse/format (spec §8) |
 | `identity.rs` | `DeviceId` (SHA-256 of the public key's SPKI) and device-name rules |
 | `discovery.rs` | Discovery and transport constants (service type, default port, TXT keys, ALPN) and how to read a browsed service (spec §3) |
 | `hex.rs` | Fixed-size byte arrays carried as hex strings |
 
 The host drives `Engine` with plain calls (`connection_opened`, `bytes_received`, `connection_closed`,
-`local_clipboard_changed`, `confirm_pairing`, `tick`) and passes the current time in; it carries out the `Output`s
-the engine queues: bytes to send, connections to close, text to put on the clipboard, and events to show or persist
-(peers connecting, pairing codes, devices paired or unpaired). The engine trusts nothing but the device ID the host
-reads from the peer's TLS certificate. Its API uses plain data and enums, with no generics, lifetimes or callbacks,
-so the Android app can call it through UniFFI unchanged.
+`local_clipboard_changed`, `set_paused`, `confirm_pairing`, `tick`) and passes the current time in; it carries out
+the `Output`s the engine queues: bytes to send, connections to close, text to put on the clipboard, and events to show
+or persist (peers connecting, pairing codes, devices paired or unpaired). The engine trusts nothing but the device ID
+the host reads from the peer's TLS certificate. Its API uses plain data and enums, with no generics, lifetimes or
+callbacks, so the Android app can call it through UniFFI unchanged.
 
 `tests/spec.rs` holds known-answer tests for every deterministic rule of the spec, one test per area;
 `tests/engine.rs` drives two engines against each other through the public API.
@@ -198,7 +198,8 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 - **Reconnecting**: every configured peer address, and every address where a paired device was found, is dialed until
   its device is connected. Failed dials back off from
   1 s to 60 s; a disconnection restarts the schedule at 1 s. The actor drives the engine's timers once a second.
-- **State**: paired devices are saved when paired, renamed or unpaired; the Lamport counter whenever it moves.
+- **State**: paired devices are saved when paired, renamed or unpaired; the Lamport counter whenever it moves; the
+  pause when it is turned on or off.
 - The clipboard content already there when the daemon starts is not sent; later changes are (see D10 in
   [Architecture decisions](ARCHITECTURE_DECISIONS.md)).
 - When the clipboard backend stops (the compositor went away), the daemon stops with an error, so its supervisor can
@@ -210,7 +211,7 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 - `$XDG_RUNTIME_DIR/clipsync.sock`, mode `0600`. A daemon refuses to start while another one answers there, and
   replaces a socket file left by one that died.
 - One JSON object per line. Requests carry `cmd` (`status`, `pair_start`, `pair_stop`, `pair_uri`, `pair_address`,
-  `confirm`, `send`, `unpair`); replies carry `type`. Each request gets one reply.
+  `confirm`, `send`, `pause`, `resume`, `unpair`); replies carry `type`. Each request gets one reply.
 - The pairing requests keep the connection streaming the pairing's progress (`pairing_code`, `paired`,
   `pairing_failed`, `pairing_ended`); the client answers a `pairing_code` with `confirm` on the same connection. For a
   pairing this device dialed, only the events of that connection are streamed. Closing the connection that opened
@@ -223,7 +224,7 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 |------|----------|
 | `$XDG_DATA_HOME/clipsync/identity.key` | The device's EC P-256 private key (PKCS#8 PEM). The device ID is derived from it, so it is never regenerated: a damaged key is an error |
 | `$XDG_DATA_HOME/clipsync/identity.crt` | Self-signed certificate for that key; reissued for the same key when missing or not matching it |
-| `$XDG_DATA_HOME/clipsync/state.json` | Paired devices and the Lamport counter |
+| `$XDG_DATA_HOME/clipsync/state.json` | Paired devices, the Lamport counter and whether sharing is paused |
 | `$XDG_CONFIG_HOME/clipsync/config.toml` | Optional settings: `name` (defaults to the hostname), `port` (47823; 0 lets the system choose), `peers` (addresses to dial besides the ones found with mDNS) |
 
 Directories are created `0700` and files written `0600`, atomically (temporary file and rename). Without

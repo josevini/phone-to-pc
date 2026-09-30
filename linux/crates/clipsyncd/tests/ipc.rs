@@ -163,6 +163,25 @@ async fn text_sent_through_the_socket_reaches_paired_devices() {
 }
 
 #[tokio::test]
+async fn sharing_is_paused_and_resumed_through_the_socket() {
+    let a = Node::start("alpha").await;
+    let mut client = a.client().await;
+    let paused = async |client: &mut Client| match client.request(&Request::Status).await.unwrap() {
+        Reply::Status { status } => status.paused,
+        other => panic!("unexpected {other:?}"),
+    };
+    assert!(!paused(&mut client).await);
+
+    assert_eq!(client.request(&Request::Pause).await.unwrap(), Reply::Ok);
+    assert!(paused(&mut client).await);
+    let reply = client.request(&Request::Send { text: "while paused".into() }).await.unwrap();
+    assert_eq!(reply, Reply::Sent { outcome: "paused".into(), peers: 0 });
+
+    assert_eq!(client.request(&Request::Resume).await.unwrap(), Reply::Ok);
+    assert!(!paused(&mut client).await);
+}
+
+#[tokio::test]
 async fn devices_are_unpaired_by_name_or_id_prefix() {
     let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
     pair(&a, &b).await;

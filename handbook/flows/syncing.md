@@ -16,6 +16,23 @@ when you ask, with text you select, share or copy and then send with **Send clip
 - When two devices copy at almost the same time, all devices end up with the same one
   of the two texts (spec §6).
 
+## Pausing
+
+Pausing stops sharing on one device without unpairing it: it stays connected to the paired
+devices, but sends nothing and ignores what they send. On a PC:
+
+```
+$ clipsync pause
+Paused: this device neither sends nor receives the clipboard, and stays paired.
+Run `clipsync resume` to share it again.
+$ clipsync resume
+Resumed: the clipboard is shared with the paired devices again.
+```
+
+While paused, `clipsync status` says so. The pause lasts until you resume, across restarts
+of the daemon. What you copy while paused is not sent when you resume; copying it again
+sends it.
+
 ## Sending text from the terminal
 
 `clipsync send TEXT` sends TEXT to the connected devices as if it had been copied here,
@@ -28,5 +45,6 @@ $ git rev-parse HEAD | clipsync send
 Sent to 1 device.
 ```
 
-It fails, with a message, when no paired device is connected, when the text is empty or
-larger than 1 MiB, or when it is the text that was last sent or received.
+It fails, with a message, when no paired device is connected, when sharing is paused, when
+the text is empty or larger than 1 MiB, or when it is the text that was last sent or
+received.

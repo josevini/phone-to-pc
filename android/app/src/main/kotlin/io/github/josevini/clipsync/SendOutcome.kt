@@ -31,6 +31,9 @@ sealed interface SendOutcome {
 
     /** Copied text an app marked as sensitive, such as a password (`ClipDescription.EXTRA_IS_SENSITIVE`). */
     data object Sensitive : SendOutcome
+
+    /** Sharing is paused. */
+    data object Paused : SendOutcome
 }
 
 /** Works out [outcome] on a worker thread, since sending blocks, and tells it in a toast. */
@@ -73,6 +76,7 @@ internal fun sendIfConnected(
         LocalChange.Unchanged -> SendOutcome.Unchanged
         LocalChange.Empty -> SendOutcome.Empty
         LocalChange.TooLarge -> SendOutcome.TooLarge
+        LocalChange.Paused -> SendOutcome.Paused
     }
 }
 
@@ -85,4 +89,5 @@ fun SendOutcome.message(resources: Resources): String =
         SendOutcome.Empty -> resources.getString(R.string.send_empty)
         SendOutcome.TooLarge -> resources.getString(R.string.send_too_large)
         SendOutcome.Sensitive -> resources.getString(R.string.send_sensitive)
+        SendOutcome.Paused -> resources.getString(R.string.send_paused)
     }

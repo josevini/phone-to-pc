@@ -167,6 +167,17 @@ bytes of `origin` (equivalent to comparing the lowercase hex strings).
    Otherwise → outcome `apply`: write `text` to the local clipboard.
    Both reply `ack applied: true`.
 
+**While paused.** The user MAY pause sharing on a device without unpairing: its
+sessions stay established, but it neither sends nor applies clips. The rules
+above then change as follows, and apply again unchanged once sharing resumes:
+
+- On a local clipboard change → outcome `paused`, whatever the text: nothing is
+  sent, `lamport` is unchanged, and `current` becomes none, since the clipboard
+  now holds text the other devices never saw.
+- On a `clip` received: `lamport = max(lamport, clip.seq)`, then outcome
+  `paused`: the clip is dropped (`ack applied: false`) and `current` is
+  unchanged.
+
 A device MUST NOT forward clips whose `origin` is another device (no relaying in
 v1), and a receiver MUST treat a clip whose `origin` is not the sender's device
 ID as a protocol error. Clips are not queued for peers that are offline.

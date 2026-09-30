@@ -145,6 +145,7 @@ pub enum LocalChange {
     Unchanged,
     Empty,
     TooLarge,
+    Paused,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -232,6 +233,15 @@ impl Engine {
         self.active.keys().copied().collect()
     }
 
+    /// Pauses or resumes sharing (spec §6): connections stay up, but clips are neither sent nor applied.
+    pub fn set_paused(&mut self, paused: bool) {
+        self.tracker.set_paused(paused);
+    }
+
+    pub fn paused(&self) -> bool {
+        self.tracker.paused()
+    }
+
     pub fn pairing_active(&self, now_ms: u64) -> bool {
         self.pairing.as_ref().is_some_and(|p| now_ms < p.expires_at)
     }
@@ -316,6 +326,7 @@ impl Engine {
         match self.tracker.local_change(text, now_ms) {
             LocalOutcome::Empty => LocalChange::Empty,
             LocalOutcome::TooLarge => LocalChange::TooLarge,
+            LocalOutcome::Paused => LocalChange::Paused,
             LocalOutcome::Unchanged => LocalChange::Unchanged,
             LocalOutcome::Emit(clip) => {
                 let seq = clip.seq;

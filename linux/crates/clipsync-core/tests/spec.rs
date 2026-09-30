@@ -277,6 +277,7 @@ enum Op {
     Local(String),
     Remote { seq: u64, origin: u8, text: &'static str },
     Hello(u64),
+    Pause(bool),
 }
 
 #[derive(Debug, PartialEq)]
@@ -288,6 +289,7 @@ enum Out {
     Apply,
     SameContent,
     Stale,
+    Paused,
     Nothing,
 }
 
@@ -379,6 +381,48 @@ fn ordering() {
             ],
         ),
         ("first remote clip applies on empty state", vec![(remote(3, LOW, "hi"), Out::Apply, 3)]),
+        (
+            "paused: nothing is sent or applied, but the counter still follows peers",
+            vec![
+                (local("a"), Out::Emit(1), 1),
+                (Op::Pause(true), Out::Nothing, 1),
+                (local("b"), Out::Paused, 1),
+                (local(""), Out::Paused, 1),
+                (remote(5, HIGH, "from peer"), Out::Paused, 5),
+                (Op::Pause(false), Out::Nothing, 5),
+                (local("c"), Out::Emit(6), 6),
+            ],
+        ),
+        (
+            "text copied while paused is sent when copied again after resuming",
+            vec![
+                (local("a"), Out::Emit(1), 1),
+                (Op::Pause(true), Out::Nothing, 1),
+                (local("b"), Out::Paused, 1),
+                (Op::Pause(false), Out::Nothing, 1),
+                (local("b"), Out::Emit(2), 2),
+            ],
+        ),
+        (
+            "a copy while paused forgets the current clip, so its text is written again",
+            vec![
+                (local("a"), Out::Emit(1), 1),
+                (Op::Pause(true), Out::Nothing, 1),
+                (local("b"), Out::Paused, 1),
+                (Op::Pause(false), Out::Nothing, 1),
+                (remote(2, LOW, "a"), Out::Apply, 2),
+            ],
+        ),
+        (
+            "a clip dropped while paused leaves the current clip as it was",
+            vec![
+                (local("a"), Out::Emit(1), 1),
+                (Op::Pause(true), Out::Nothing, 1),
+                (remote(4, HIGH, "dropped"), Out::Paused, 4),
+                (Op::Pause(false), Out::Nothing, 4),
+                (remote(4, LOW, "a"), Out::SameContent, 4),
+            ],
+        ),
     ];
 
     for (name, steps) in scenarios {
@@ -390,6 +434,7 @@ fn ordering() {
                     LocalOutcome::Unchanged => Out::Unchanged,
                     LocalOutcome::Empty => Out::Empty,
                     LocalOutcome::TooLarge => Out::TooLarge,
+                    LocalOutcome::Paused => Out::Paused,
                 },
                 Op::Remote { seq, origin, text } => {
                     let clip = Clip {
@@ -405,10 +450,15 @@ fn ordering() {
                         RemoteOutcome::Apply => Out::Apply,
                         RemoteOutcome::SameContent => Out::SameContent,
                         RemoteOutcome::Stale => Out::Stale,
+                        RemoteOutcome::Paused => Out::Paused,
                     }
                 }
                 Op::Hello(seq) => {
                     tracker.observe_hello(seq);
+                    Out::Nothing
+                }
+                Op::Pause(paused) => {
+                    tracker.set_paused(paused);
                     Out::Nothing
                 }
             };

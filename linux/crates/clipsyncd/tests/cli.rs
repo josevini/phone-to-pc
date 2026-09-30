@@ -133,6 +133,35 @@ async fn pairing_sending_and_unpairing_from_the_command_line() {
 }
 
 #[tokio::test]
+async fn pausing_and_resuming_from_the_command_line() {
+    let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
+    pair_with_cli(&a, &b).await;
+    let cli = |args: &[&str]| {
+        let mut cmd = a.cli();
+        cmd.args(args);
+        run(cmd)
+    };
+
+    let out = cli(&["pause"]).await;
+    assert!(out.status.success() && text(&out).contains("Paused"), "{}", text(&out));
+    let shown = text(&cli(&["status"]).await);
+    assert!(shown.contains("Sharing is paused"), "{shown}");
+    let out = cli(&["send", "while paused"]).await;
+    assert!(!out.status.success() && text(&out).contains("paused"), "{}", text(&out));
+
+    let out = cli(&["resume"]).await;
+    assert!(out.status.success() && text(&out).contains("Resumed"), "{}", text(&out));
+    assert!(!text(&cli(&["status"]).await).contains("paused"));
+    let out = cli(&["send", "after resuming"]).await;
+    assert!(out.status.success(), "{}", text(&out));
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while b.clipboard.contents().as_deref() != Some("after resuming") {
+        assert!(std::time::Instant::now() < deadline, "b never received the text");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test]
 async fn send_reads_standard_input_when_no_text_is_given() {
     let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
     pair_with_cli(&a, &b).await;

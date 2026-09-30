@@ -30,6 +30,10 @@ enum Command {
     Send { text: Option<String> },
     /// Forget a paired device, named by its name, ID or ID prefix.
     Unpair { device: String },
+    /// Stop sharing the clipboard without unpairing: nothing is sent or received until `clipsync resume`.
+    Pause,
+    /// Share the clipboard again after `clipsync pause`.
+    Resume,
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -44,6 +48,17 @@ async fn main() -> Result<()> {
         Command::Send { text } => send(&mut client, text).await?,
         Command::Unpair { device } => match client.request(&Request::Unpair { device }).await? {
             Reply::Unpaired { id, name } => println!("Unpaired {name} ({}).", short(&id)),
+            other => fail(other)?,
+        },
+        Command::Pause => match client.request(&Request::Pause).await? {
+            Reply::Ok => println!(
+                "Paused: this device neither sends nor receives the clipboard, and stays paired.\n\
+                 Run `clipsync resume` to share it again."
+            ),
+            other => fail(other)?,
+        },
+        Command::Resume => match client.request(&Request::Resume).await? {
+            Reply::Ok => println!("Resumed: the clipboard is shared with the paired devices again."),
             other => fail(other)?,
         },
     }
@@ -128,6 +143,7 @@ async fn send(client: &mut Client, text: Option<String>) -> Result<()> {
             "unchanged" => bail!("this text was the last one sent or received; nothing was sent"),
             "empty" => bail!("nothing to send"),
             "too_large" => bail!("the text is larger than 1 MiB"),
+            "paused" => bail!("sharing is paused; nothing was sent (run `clipsync resume` to share again)"),
             other => bail!("unexpected outcome {other:?}"),
         },
         other => return fail(other),
@@ -168,6 +184,9 @@ fn render_status(status: &StatusView) -> String {
     if status.pairing {
         out += "  Pairing mode is open\n";
     }
+    if status.paused {
+        out += "  Sharing is paused; `clipsync resume` shares the clipboard again\n";
+    }
     out.push('\n');
     out + &render_devices(&status.devices)
 }
@@ -201,6 +220,7 @@ mod tests {
             port: 47823,
             addrs: vec!["192.168.0.10:47823".into()],
             pairing,
+            paused: false,
             devices,
         }
     }
@@ -216,6 +236,19 @@ mod tests {
             shown,
             "alpha (86224755)\n  Reachable at 192.168.0.10:47823\n  Pairing mode is open\n\nPaired devices:\n  \
              ● beta (bdc09de0)  connected\n  ○ phone (12345678)  offline\n"
+        );
+    }
+
+    #[test]
+    fn status_says_when_sharing_is_paused() {
+        let status = StatusView { paused: true, ..view(false, vec![]) };
+        assert!(
+            render_status(&status).starts_with(
+                "alpha (86224755)\n  Reachable at 192.168.0.10:47823\n  Sharing is paused; `clipsync resume` shares \
+                 the clipboard again\n\n"
+            ),
+            "{}",
+            render_status(&status)
         );
     }
 
