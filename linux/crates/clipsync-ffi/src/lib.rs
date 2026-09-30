@@ -378,6 +378,24 @@ pub fn parse_pair_uri(uri: String) -> Result<PairUri, CoreError> {
     })
 }
 
+/// The pairing URI a device shows in its QR code (spec §8). Values the URI cannot carry are an
+/// error, so what it returns always parses.
+#[uniffi::export]
+pub fn format_pair_uri(uri: PairUri) -> Result<String, CoreError> {
+    let addrs = uri
+        .addrs
+        .iter()
+        .map(|a| match a.ip.parse::<IpAddr>() {
+            Ok(ip) => Ok(SocketAddr::new(ip, a.port)),
+            Err(_) => Err(CoreError::InvalidUri { reason: format!("`{}` is not an IP address", a.ip) }),
+        })
+        .collect::<Result<_, _>>()?;
+    let token = uri.token.parse::<Hex16>().map_err(|_| CoreError::InvalidToken)?;
+    let text = pairing::PairUri { id: device_id(&uri.id)?, name: uri.name, addrs, token }.to_uri();
+    pairing::PairUri::parse(&text)?;
+    Ok(text)
+}
+
 /// Formats a pairing code for display: `037 725`.
 #[uniffi::export]
 pub fn format_sas(code: u32) -> String {
@@ -451,6 +469,12 @@ pub fn service_type() -> String {
 #[uniffi::export]
 pub fn default_port() -> u16 {
     discovery::DEFAULT_PORT
+}
+
+/// How long pairing mode stays open, and a pairing code works (spec §7.2).
+#[uniffi::export]
+pub fn pairing_window_ms() -> u64 {
+    eng::PAIRING_WINDOW_MS
 }
 
 /// ALPN protocol ID of the TLS connection.

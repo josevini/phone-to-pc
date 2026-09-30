@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use clipsync_ffi::{
-    CoreError, DiscoveredPeer, PairUri, SocketAddress, alpn, default_port, instance_name, is_valid_name,
-    parse_pair_uri, peer_from_service, service_type, short_id, txt_properties,
+    CoreError, DiscoveredPeer, PairUri, SocketAddress, alpn, default_port, format_pair_uri, instance_name,
+    is_valid_name, pairing_window_ms, parse_pair_uri, peer_from_service, service_type, short_id, txt_properties,
 };
 
 const ID: &str = "86224755c0ff3b3b412a5da3ef12466cb12c48326e3454c02687f2cc88771027";
@@ -36,6 +36,47 @@ fn a_bad_pairing_uri_says_why() {
     assert!(reason.contains("clipsync://pair"), "{reason}");
     let uri = format!("clipsync://pair?v=2&id={ID}&name=x&addr=10.0.0.1:1&token=000102030405060708090a0b0c0d0e0f");
     assert_eq!(parse_pair_uri(uri), Err(CoreError::UnsupportedUriVersion { version: "2".into() }));
+}
+
+fn invite() -> PairUri {
+    PairUri {
+        id: ID.into(),
+        name: "Meu celular".into(),
+        addrs: vec![
+            SocketAddress { ip: "192.168.0.20".into(), port: 47823 },
+            SocketAddress { ip: "fd00::2".into(), port: 47823 },
+        ],
+        token: "000102030405060708090a0b0c0d0e0f".into(),
+    }
+}
+
+#[test]
+fn a_pairing_uri_is_formatted_from_plain_values() {
+    let uri = format_pair_uri(invite()).unwrap();
+    assert_eq!(
+        uri,
+        format!(
+            "clipsync://pair?v=1&id={ID}&name=Meu+celular&addr=192.168.0.20%3A47823&addr=%5Bfd00%3A%3A2%5D%3A47823\
+             &token=000102030405060708090a0b0c0d0e0f"
+        )
+    );
+    assert_eq!(parse_pair_uri(uri), Ok(invite()));
+}
+
+#[test]
+fn a_pairing_uri_is_not_formatted_from_values_it_cannot_carry() {
+    let bad_id = PairUri { id: "x".into(), ..invite() };
+    assert_eq!(format_pair_uri(bad_id), Err(CoreError::InvalidDeviceId { id: "x".into() }));
+    let bad_token = PairUri { token: "0001".into(), ..invite() };
+    assert_eq!(format_pair_uri(bad_token), Err(CoreError::InvalidToken));
+    let bad_ip = PairUri { addrs: vec![SocketAddress { ip: "phone.local".into(), port: 1 }], ..invite() };
+    assert_eq!(
+        format_pair_uri(bad_ip),
+        Err(CoreError::InvalidUri { reason: "`phone.local` is not an IP address".into() })
+    );
+    // The spec requires at least one address and a 1–64 byte name.
+    assert!(matches!(format_pair_uri(PairUri { addrs: vec![], ..invite() }), Err(CoreError::InvalidUri { .. })));
+    assert!(matches!(format_pair_uri(PairUri { name: String::new(), ..invite() }), Err(CoreError::InvalidUri { .. })));
 }
 
 fn txt(pairs: &[(&str, &str)]) -> HashMap<String, String> {
@@ -70,6 +111,7 @@ fn names_ids_and_constants() {
     assert!(is_valid_name("Pixel 8".into()));
     assert!(!is_valid_name(String::new()));
     assert_eq!(default_port(), 47823);
+    assert_eq!(pairing_window_ms(), 120_000);
     assert_eq!(alpn(), "clipsync/1");
     assert_eq!(service_type(), "_clipsync._tcp");
 }
