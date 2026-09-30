@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -250,6 +252,7 @@ private fun Scan(
         placeholder = { Text("clipsync://pair?…") },
         leadingIcon = { Icon(painterResource(R.drawable.ic_link), null) },
         singleLine = true,
+        keyboardOptions = PairingLinkKeyboard,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -257,6 +260,9 @@ private fun Scan(
         Text(stringResource(R.string.pair))
     }
 }
+
+/** A link is typed as it is: autocorrection would turn its parameters into words. */
+internal val PairingLinkKeyboard = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false)
 
 /** Corner brackets over the camera preview, the familiar sign of a code scanner. */
 private fun Modifier.viewfinder(color: Color) =
