@@ -2,4 +2,10 @@
 <resources>
     <!-- Compose draws everything; the window theme only sets the colours shown before it does. -->
     <style name="Theme.Clipsync" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Shows nothing and appears without animation: ClipboardSendActivity needs a window only for its focus. -->
+    <style name="Theme.Clipsync.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>

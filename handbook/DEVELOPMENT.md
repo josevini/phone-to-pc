@@ -74,7 +74,7 @@ From `android/`:
 ./gradlew lintKotlin :app:lintDebug   # ktlint (formatKotlin fixes what it can) and Android Lint
 ./gradlew :app:assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:installDebug           # onto the device adb sees
-./gradlew :app:connectedDebugAndroidTest   # the instrumented tests, on that device
+ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest   # the instrumented tests, on that device
 ```
 
 Gradle builds the Rust parts through Cargo: `clipsync-ffi` for this machine (the bindings are generated from it and
@@ -95,9 +95,34 @@ The suites of `app`:
 | Suite | What it runs |
 |-------|--------------|
 | `DeviceNameTest`, `QrDecoderTest`, `PairingTrackerTest` (JVM) | The default device name; reading pairing QR codes from camera frames, including light-on-dark ones; how pairing events map to success or a failure |
+| `SendOutcomeTest`, `SendIntentTest`, `ClipboardSendTest` (JVM) | What sending tells the user; the text a selection or a share carries; sending the clipboard (skipping sensitive text, giving up on a tap made on a locked phone that was not unlocked within a minute) and the tile's state |
 | `KeystoreSyncTest` (on a device) | Two nodes with Keystore identities pair over loopback TLS and sync, through the native library |
+| `SendFromDeviceTest` (on a device) | The activities that send, opened as the user opens them, sending through the running node to a second node on loopback: selected text, shared text, and the clipboard, except text marked sensitive. It wakes and unlocks the device (a PIN stops it) and replaces what the device's clipboard holds |
 
-The instrumented test needs a phone or an emulator, so CI does not run it.
+The instrumented tests need a phone or an emulator, so CI does not run them. `connectedDebugAndroidTest` uninstalls
+the app when it finishes, which deletes its identity and pairings: run it on an emulator, and set `ANDROID_SERIAL` to
+that emulator whenever a phone is also connected, since otherwise it runs on every device `adb` sees.
+
+### Emulators
+
+Clipboard access and the Quick Settings tile differ between Android versions: 10 is the oldest the app supports,
+13 the last before `TileService` takes a `PendingIntent`, and 14 and newer take it. Emulators for 10 and 13, with the
+SDK's `sdkmanager` and `avdmanager` (about 6 GB each):
+
+```sh
+sdkmanager "emulator" "system-images;android-29;google_apis;x86_64" "system-images;android-33;google_apis;x86_64"
+avdmanager create avd -n clipsync-api29 -k "system-images;android-29;google_apis;x86_64" -d pixel_6
+avdmanager create avd -n clipsync-api33 -k "system-images;android-33;google_apis;x86_64" -d pixel_6
+emulator -avd clipsync-api33 -no-window -no-audio -no-snapshot-save   # headless; adb sees it as emulator-5554
+```
+
+To sync with an emulator without touching your clipboard, run a daemon with scratch directories (see
+[Running the daemon](#running-the-daemon)) on a private headless Sway, like the tests do
+(`WLR_BACKENDS=headless WLR_RENDERER=pixman sway -c /dev/null` with its own `XDG_RUNTIME_DIR`), and point the
+daemon's `WAYLAND_DISPLAY` at that Sway. Keep the scratch paths short: Unix socket paths are limited to 108 bytes. The
+emulator reaches the PC at its LAN addresses, so pairing with the link `clipsync pair` prints works; type it with
+`adb shell input text` in chunks of about 30 characters (longer strings get cut) and with the emulator's keyboard
+disabled (`adb shell ime disable …`), or autocorrection rewrites it.
 
 The test identities are PKCS#12 files made with `keytool` (EC P-256, self-signed, password `testing`) in
 `session/src/test/resources/identities/`; `TlsTest` pins their device IDs as computed by `openssl`.

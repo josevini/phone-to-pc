@@ -1,9 +1,9 @@
 # Syncing the clipboard
 
 Once devices are paired and connected, copying text on one puts it on the clipboard of
-the others. Android phones are the exception when sending: they receive what PCs copy, and
-send text you select or share and choose to send, not what you copy (see
-[The Android app](android.md#sending-text)).
+the others. Android phones are the exception when sending: they receive what PCs copy, but send only
+when you ask, with text you select, share or copy and then send with **Send clipboard**
+(see [The Android app](android.md#sending-text)).
 
 ## What is synced
 

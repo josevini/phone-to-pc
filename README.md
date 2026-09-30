@@ -12,7 +12,7 @@ Android.
 
 > **Status: early development.** Linux devices pair and sync their clipboards; the
 > Android app pairs with them, receives their clipboard, and sends text from the
-> text-selection menu and the share sheet.
+> text-selection menu, the share sheet, and a Send clipboard tile and notification action.
 
 ## Repository layout
 

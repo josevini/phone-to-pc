@@ -54,6 +54,29 @@
             </intent-filter>
         </activity>
 
+        <!--
+            "Send clipboard" from the Quick Settings tile and the notification: a transparent window, whose focus lets it
+            read the clipboard. Its own task, so that finishing returns to the app that was on screen. Not noHistory: on a
+            locked phone it starts behind the lock screen and must outlast it to get focus.
+        -->
+        <activity
+            android:name=".ClipboardSendActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Clipsync.Transparent" />
+
+        <service
+            android:name=".ClipboardTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_content_paste_go"
+            android:label="@string/send_clipboard"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".SyncService"
             android:exported="false"

@@ -155,6 +155,7 @@ class SyncService : LifecycleService() {
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)
+            .addAction(Notification.Action.Builder(null, getString(R.string.send_clipboard), sendClipboardIntent(this)).build())
             .addAction(Notification.Action.Builder(null, getString(R.string.notification_stop), stop).build())
             .build()
     }

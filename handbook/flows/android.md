@@ -2,15 +2,15 @@
 
 The app (Android 10 or newer) receives the clipboard of the PCs it is paired with: text
 copied on a PC appears in the phone's clipboard, ready to paste. Sending goes the other
-way from the text-selection menu and the share sheet (see [Sending text](#sending-text)):
-Android lets only the app in the foreground read the clipboard, so the phone does not
-send what is copied on it by itself.
+way when you ask, from the text-selection menu, the share sheet or **Send clipboard** (see
+[Sending text](#sending-text)): Android lets only the app in the foreground read the
+clipboard, so the phone does not send what is copied on it by itself.
 
 ## First run
 
 Opening the app starts a background service that stays connected to the paired devices,
 shown by an ongoing notification ("Sharing the clipboard", with the number of connected
-devices and a Stop action). The app asks:
+devices, and the Send clipboard and Stop actions). The app asks:
 
 - to show notifications (Android 13+), for that notification;
 - to be exempt from battery optimisation, from a card on the main screen: without it,
@@ -39,7 +39,7 @@ in the foreground or not (see [Syncing the clipboard](syncing.md) for what is sy
 
 ## Sending text
 
-Two ways send text to the paired devices that are connected, which put it on their
+Three ways send text to the paired devices that are connected, which put it on their
 clipboard; the phone's own clipboard is left as it is:
 
 - Select text in any app and choose **Send to devices** in the menu that pops up (it may
@@ -47,6 +47,12 @@ clipboard; the phone's own clipboard is left as it is:
 - Tap **Share** in any app that shares text (a page's link, a note, a place) and choose
   **Send to devices**. When the app shares only a subject, such as a title, the subject is
   sent. Images and files are not offered this target.
+- Copy text as usual, then tap **Send clipboard**: in the notification (expand it to see
+  its actions) or as a Quick Settings tile, added by editing the Quick Settings panel. The
+  tile is lit while a paired device is connected. Android lets only the app on screen read
+  the clipboard, so clipsync opens an invisible window for an instant to read it, and
+  Android may say that clipsync pasted from the clipboard. On a locked phone the tile asks
+  to unlock first; if the phone is not unlocked within a minute, nothing is sent.
 
 Once a device is paired, the main screen shows this as a tip under the device list. A
 short message says what happened:
@@ -56,6 +62,8 @@ short message says what happened:
   one is.
 - Not sent, because it is the text last sent or received.
 - Not sent, because it is empty or larger than 1 MiB.
+- Not sent, because the app it was copied from marked it as sensitive, as password
+  managers do with passwords.
 - Not sent, because sharing is stopped (the notification's Stop action); open the app to
   start it again.
 

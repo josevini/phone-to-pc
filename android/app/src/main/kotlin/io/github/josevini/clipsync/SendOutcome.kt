@@ -1,9 +1,14 @@
 package io.github.josevini.clipsync
 
+import android.content.Context
 import android.content.res.Resources
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import io.github.josevini.clipsync.core.LocalChange
 import io.github.josevini.clipsync.session.Node
 import java.util.concurrent.RejectedExecutionException
+import kotlin.concurrent.thread
 
 /** What became of text the user chose to send, as they are told. */
 sealed interface SendOutcome {
@@ -23,6 +28,21 @@ sealed interface SendOutcome {
 
     /** Over 1 MiB. */
     data object TooLarge : SendOutcome
+
+    /** Copied text an app marked as sensitive, such as a password (`ClipDescription.EXTRA_IS_SENSITIVE`). */
+    data object Sensitive : SendOutcome
+}
+
+/** Works out [outcome] on a worker thread, since sending blocks, and tells it in a toast. */
+fun reportInBackground(
+    context: Context,
+    outcome: () -> SendOutcome,
+) {
+    val app = context.applicationContext
+    thread(name = "clipsync-send") {
+        val message = outcome().message(app.resources)
+        Handler(Looper.getMainLooper()).post { Toast.makeText(app, message, Toast.LENGTH_SHORT).show() }
+    }
 }
 
 /** Sends [text] to the devices [node] is connected to. Blocks until the node's thread has taken it. */
@@ -64,4 +84,5 @@ fun SendOutcome.message(resources: Resources): String =
         SendOutcome.Unchanged -> resources.getString(R.string.send_unchanged)
         SendOutcome.Empty -> resources.getString(R.string.send_empty)
         SendOutcome.TooLarge -> resources.getString(R.string.send_too_large)
+        SendOutcome.Sensitive -> resources.getString(R.string.send_sensitive)
     }

@@ -6,7 +6,8 @@ What the code does **today**. The reasoning behind choices lives in
 Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired devices over mutual TLS and finds them
 with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text and unpairs.
 The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the phone's
-clipboard; it sends text chosen in the text-selection menu or the share sheet.
+clipboard; it sends text chosen in the text-selection menu or the share sheet, and the clipboard's text from a Quick
+Settings tile or the notification.
 
 ## Big picture
 
@@ -118,12 +119,14 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 
 | File | Responsibility |
 |------|----------------|
-| `SyncService.kt` | Foreground service (`connectedDevice`): owns the `Node` and `Discovery`, writes received text to the clipboard on the main thread, keeps the notification's connected count |
+| `SyncService.kt` | Foreground service (`connectedDevice`): owns the `Node` and `Discovery`, writes received text to the clipboard on the main thread, keeps the notification's connected count and its Send clipboard and Stop actions |
 | `KeystoreIdentity.kt` | The EC P-256 key in the Android Keystore (alias `clipsync-identity`) and the self-signed certificate the Keystore issues for it |
 | `Discovery.kt` | `NsdManager`: advertises `_clipsync._tcp` with the core's instance name and TXT properties, and reports resolved services to the node through the core's `peer_from_service` (Android 14+ follows each service; older versions resolve one at a time) |
 | `Sync.kt` | The running node as the UI sees it: a status `StateFlow` and an event `SharedFlow` |
 | `SendActivity.kt` | "Send to devices" in the text-selection menu (`ACTION_PROCESS_TEXT`) and the share sheet (`ACTION_SEND` of `text/plain`): an activity with no window that hands the text to the node on a worker thread and reports the outcome in a toast |
-| `SendOutcome.kt` | `send`: sends text through the running node, only while a paired device is connected, and maps the core's `LocalChange` to what the user is told |
+| `ClipboardSendActivity.kt` | "Send clipboard": a transparent activity that reads the clipboard once its window has focus (Android lets only the focused app read it, D7), skips text marked `EXTRA_IS_SENSITIVE`, sends the rest like `SendActivity` and finishes. Started on a locked phone, it waits behind the lock screen for that focus, and sends nothing if it comes more than a minute after the tap |
+| `ClipboardTileService.kt` | The "Send clipboard" Quick Settings tile: opens `ClipboardSendActivity`, and is lit while a paired device is connected |
+| `SendOutcome.kt` | `send`: sends text through the running node, only while a paired device is connected, and maps the core's `LocalChange` to what the user is told; `reportInBackground` sends on a worker thread and shows the outcome in a toast |
 | `Pairing.kt` | `PairingTracker`: follows one QR pairing through the node's events to success or a failure the user can act on |
 | `QrDecoder.kt` | Reads a QR code from a camera frame's luminance plane with ZXing, dark on light or light on dark |
 | `DeviceName.kt` | The device name: the user's choice, or the phone's model cut to 64 bytes |

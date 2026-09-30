@@ -10,6 +10,7 @@
         <item quantity="other">Connected to %d devices</item>
     </plurals>
     <string name="notification_stop">Stop</string>
+    <string name="send_clipboard">Send clipboard</string>
 
     <string name="send_to_devices">Send to devices</string>
     <plurals name="sent_to">
@@ -21,6 +22,7 @@
     <string name="send_unchanged">Not sent: this is the text last sent or received.</string>
     <string name="send_empty">Nothing to send.</string>
     <string name="send_too_large">Not sent: text over 1 MiB is not synced.</string>
+    <string name="send_sensitive">Not sent: the copied text is marked as sensitive, such as a password.</string>
 
     <string name="about">About</string>
     <string name="back">Back</string>
@@ -48,7 +50,7 @@
     <string name="battery_allow">Allow</string>
 
     <string name="tip_send_title">Send text from any app</string>
-    <string name="tip_send_text">Select text and choose Send to devices in the menu that pops up, or share it to clipsync.</string>
+    <string name="tip_send_text">Select text and choose Send to devices, share it to clipsync, or copy it and tap Send clipboard in the notification or Quick Settings.</string>
 
     <string name="pair_with_pc">Pair with a PC</string>
     <string name="pair_instructions">Run this on your PC, then point the camera at the code it shows.</string>
