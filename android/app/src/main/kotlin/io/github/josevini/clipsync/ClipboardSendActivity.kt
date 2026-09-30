@@ -55,6 +55,11 @@ class ClipboardSendActivity : Activity() {
         if (!hasFocus || read) return
         read = true
         if (!stillWanted(requestedAt, SystemClock.elapsedRealtime())) return finish()
+        if (Sync.status.value?.paused == true) {
+            // Nothing would be sent: don't read the clipboard.
+            reportInBackground(this) { SendOutcome.Paused }
+            return finish()
+        }
         val clip = getSystemService(ClipboardManager::class.java).primaryClip
         val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text
         val sensitive = clip?.description?.extras?.getBoolean(EXTRA_IS_SENSITIVE) == true

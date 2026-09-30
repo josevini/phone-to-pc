@@ -20,11 +20,12 @@ data class SavedDevice(
     val addrs: List<SavedAddress> = emptyList(),
 )
 
-/** What a node keeps between runs: its paired devices and Lamport counter (spec §6). */
+/** What a node keeps between runs: its paired devices, Lamport counter (spec §6) and whether sharing is paused. */
 @Serializable
 data class SavedState(
     val lamport: Long = 0,
     val paired: List<SavedDevice> = emptyList(),
+    val paused: Boolean = false,
 )
 
 interface StateStore {

@@ -55,6 +55,11 @@ sealed interface NodeEvent {
     data class PairingConnection(
         val conn: ULong,
     ) : NodeEvent
+
+    /** Sharing was paused or resumed with [Node.setPaused]. */
+    data class PausedChanged(
+        val paused: Boolean,
+    ) : NodeEvent
 }
 
 fun interface NodeListener {
@@ -67,6 +72,8 @@ data class NodeStatus(
     val port: Int,
     val pairing: Boolean,
     val devices: List<DeviceStatus>,
+    /** Sharing is paused: clips are neither sent nor applied. */
+    val paused: Boolean = false,
 )
 
 data class DeviceStatus(
@@ -102,7 +109,7 @@ class Node(
             LocalDevice(identity.id, config.name, config.platform),
             state.paired.map { PairedDevice(it.id, it.name) },
             state.lamport.toULong(),
-        )
+        ).apply { setPaused(state.paused) }
     private val connections = HashMap<ULong, Connection>()
 
     /** Addresses to reconnect to: where paired devices were reached or found. */
@@ -132,7 +139,7 @@ class Node(
     fun status(): NodeStatus =
         ask {
             val devices = state.paired.map { DeviceStatus(it.id, it.name, engine.isConnected(it.id)) }
-            NodeStatus(identity.id, config.name, port, engine.pairingActive(now()), devices)
+            NodeStatus(identity.id, config.name, port, engine.pairingActive(now()), devices, engine.paused())
         }
 
     /** Opens pairing mode and returns the token for a pairing URI. */
@@ -154,6 +161,17 @@ class Node(
 
     /** Sends [text] to the connected devices, as if it had been copied here. */
     fun sendText(text: String): LocalChange = ask { engine.localClipboardChanged(text, now()) }
+
+    /** Pauses or resumes sharing; paired devices stay connected. Kept across restarts, and reported with [NodeEvent.PausedChanged]. */
+    fun setPaused(paused: Boolean) =
+        post {
+            engine.setPaused(paused)
+            if (state.paused != paused) {
+                state = state.copy(paused = paused)
+                save()
+            }
+            listener.onEvent(NodeEvent.PausedChanged(paused))
+        }
 
     /** Unpairs device [id]; false if it was not paired. */
     fun unpair(id: String): Boolean =

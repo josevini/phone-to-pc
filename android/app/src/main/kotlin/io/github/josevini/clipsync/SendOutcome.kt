@@ -55,7 +55,8 @@ fun send(
 ): SendOutcome {
     if (node == null) return SendOutcome.NotRunning
     return try {
-        sendIfConnected(node.status().devices.any { it.connected }) { node.sendText(text) }
+        val status = node.status()
+        sendIfConnected(status.devices.any { it.connected }, status.paused) { node.sendText(text) }
     } catch (_: RejectedExecutionException) {
         // The service stopped the node meanwhile.
         SendOutcome.NotRunning
@@ -63,13 +64,15 @@ fun send(
 }
 
 /**
- * Calls [send] only when a paired device is [connected]: sending to nobody would still make the text the current
- * clip, so sending it again once a device connects would be [LocalChange.Unchanged].
+ * Calls [send] only when a paired device is [connected] and sharing is not [paused]: sending to nobody would still
+ * make the text the current clip, so sending it again once a device connects would be [LocalChange.Unchanged].
  */
 internal fun sendIfConnected(
     connected: Boolean,
+    paused: Boolean = false,
     send: () -> LocalChange,
 ): SendOutcome {
+    if (paused) return SendOutcome.Paused
     if (!connected) return SendOutcome.NoDevice
     return when (val change = send()) {
         is LocalChange.Sent -> if (change.peers == 0u) SendOutcome.NoDevice else SendOutcome.Sent(change.peers.toInt())

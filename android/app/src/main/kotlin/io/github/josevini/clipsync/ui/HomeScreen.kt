@@ -36,6 +36,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import io.github.josevini.clipsync.DeviceName
 import io.github.josevini.clipsync.R
+import io.github.josevini.clipsync.Sync
 import io.github.josevini.clipsync.SyncService
 import io.github.josevini.clipsync.core.isValidName
 import io.github.josevini.clipsync.core.shortId
@@ -67,6 +68,16 @@ fun HomeScreen(
                     summary = status?.let { stringResource(R.string.short_id, shortId(it.id)) },
                     onClickLabel = stringResource(R.string.rename),
                     onClick = if (status != null) ({ renaming = true }) else null,
+                )
+                GroupDivider()
+                val sharing = status?.paused == false
+                SwitchRow(
+                    title = stringResource(R.string.share_clipboard),
+                    checked = sharing,
+                    onCheckedChange = if (status != null) ({ Sync.node?.setPaused(!it) }) else null,
+                    icon = R.drawable.ic_content_paste_go,
+                    iconTint = if (sharing) colors.primary else colors.onSurfaceVariant,
+                    summary = status?.let { stringResource(if (sharing) R.string.share_clipboard_on else R.string.share_clipboard_off) },
                 )
             }
         }
@@ -122,6 +133,7 @@ private fun summary(status: NodeStatus?): String {
     val connected = devices.count { it.connected }
     return when {
         devices.isEmpty() -> stringResource(R.string.no_devices_title)
+        status.paused -> stringResource(R.string.sharing_paused)
         connected == 0 -> stringResource(R.string.notification_waiting)
         else -> pluralStringResource(R.plurals.notification_connected, connected, connected)
     }

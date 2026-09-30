@@ -61,6 +61,10 @@ class PairingTracker(
                     else -> null
                 }
             }
+
+            is NodeEvent.PausedChanged -> {
+                null
+            }
         }
 
     private fun failure(reason: CloseReason): PairingFailure =

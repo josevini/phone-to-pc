@@ -22,12 +22,19 @@ class SendOutcomeTest {
     }
 
     @Test
+    fun `nothing is sent while sharing is paused, connected or not`() {
+        assertEquals(SendOutcome.Paused, sendIfConnected(connected = true, paused = true) { throw AssertionError("sent") })
+        assertEquals(SendOutcome.Paused, sendIfConnected(connected = false, paused = true) { throw AssertionError("sent") })
+    }
+
+    @Test
     fun `text the core does not send says why`() {
         val cases =
             mapOf(
                 LocalChange.Unchanged to SendOutcome.Unchanged,
                 LocalChange.Empty to SendOutcome.Empty,
                 LocalChange.TooLarge to SendOutcome.TooLarge,
+                // Paused between reading the status and sending.
                 LocalChange.Paused to SendOutcome.Paused,
             )
         for ((change, outcome) in cases) assertEquals(outcome, sendIfConnected(connected = true) { change })

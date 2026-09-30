@@ -76,6 +76,55 @@ class NodeTest {
     }
 
     @Test
+    fun `a paused node stays connected but neither sends nor applies`() {
+        val (alice, bob) = node("alice", "alice") to node("bob", "bob")
+        pair(alice, bob)
+        waitUntil("both connected") {
+            alice.node
+                .status()
+                .devices
+                .all { it.connected } &&
+                bob.node
+                    .status()
+                    .devices
+                    .all { it.connected }
+        }
+
+        alice.node.setPaused(true)
+        assertEquals(true, alice.recorder.await("alice to pause") { (it as? NodeEvent.PausedChanged)?.paused })
+        assertTrue(alice.node.status().paused)
+        assertEquals(LocalChange.Paused, alice.node.sendText("private"))
+        assertEquals(LocalChange.Sent(1u, 1u), bob.node.sendText("from bob"))
+        val delivered =
+            bob.recorder.await("bob's clip to be acknowledged") {
+                ((it as? NodeEvent.Engine)?.event as? EngineEvent.ClipDelivered)?.applied
+            }
+        assertFalse(delivered)
+        assertTrue(alice.recorder.clipboard.isEmpty())
+        assertTrue(
+            alice.node
+                .status()
+                .devices
+                .all { it.connected },
+        )
+
+        alice.node.setPaused(false)
+        assertEquals(false, alice.recorder.await("alice to resume") { (it as? NodeEvent.PausedChanged)?.paused })
+        assertEquals(LocalChange.Sent(2u, 1u), alice.node.sendText("shared again"))
+        assertEquals("shared again", bob.recorder.awaitClipboard())
+    }
+
+    @Test
+    fun `pausing is kept across a restart`() {
+        val alice = node("alice", "alice")
+        alice.node.setPaused(true)
+        waitUntil("alice paused") { alice.node.status().paused }
+        alice.close()
+        val again = TestNode("alice", "alice", alice.dir).also { nodes += it }
+        assertTrue(again.node.status().paused)
+    }
+
+    @Test
     fun `unpairing reaches the other device`() {
         val (alice, bob) = node("alice", "alice") to node("bob", "bob")
         pair(alice, bob)

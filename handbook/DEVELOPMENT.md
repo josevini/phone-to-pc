@@ -87,7 +87,7 @@ The suites of `session`:
 |-------|--------------|
 | `TlsTest` | Mutual TLS between two identities; refusing a client without a certificate, a peer without ALPN, an impostor |
 | `FileStateStoreTest` | Saving and loading the state |
-| `NodeTest` | Two nodes on loopback: QR pairing, syncing both ways, reconnecting after a restart, unpairing, refused tokens and forged QR codes |
+| `NodeTest` | Two nodes on loopback: QR pairing, syncing both ways, pausing, reconnecting after a restart, unpairing, refused tokens and forged QR codes |
 | `InteropTest` | A node against the real `clipsyncd` on a private headless Sway: pairing with `clipsync pair`'s URI, then a Wayland copy reaching the node and text from the node reaching the Wayland clipboard |
 
 The suites of `app`:

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -212,6 +214,7 @@ fun GroupRow(
     onClickLabel: String? = null,
     onClick: (() -> Unit)? = null,
     below: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val clickable =
         if (onClick != null) Modifier.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick) else Modifier
@@ -232,7 +235,32 @@ fun GroupRow(
             summary?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = summaryColor) }
             below?.invoke()
         }
+        if (trailing != null) {
+            Spacer(Modifier.width(16.dp))
+            trailing()
+        }
     }
+}
+
+/** A [GroupRow] that turns a setting on or off with a switch; tapping anywhere on the row toggles it. */
+@Composable
+fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    @DrawableRes icon: Int? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    summary: String? = null,
+) {
+    val enabled = onCheckedChange != null
+    GroupRow(
+        title = title,
+        modifier = Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch) { onCheckedChange?.invoke(it) },
+        icon = icon,
+        iconTint = iconTint,
+        summary = summary,
+        trailing = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+    )
 }
 
 /** The line between two rows of a [Group], lined up with the rows' text. */

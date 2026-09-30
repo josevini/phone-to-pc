@@ -9,6 +9,9 @@
         <item quantity="one">Connected to %d device</item>
         <item quantity="other">Connected to %d devices</item>
     </plurals>
+    <string name="notification_title_paused">Clipboard sharing paused</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_resume">Resume</string>
     <string name="notification_stop">Stop</string>
     <string name="send_clipboard">Send clipboard</string>
 
@@ -23,7 +26,7 @@
     <string name="send_empty">Nothing to send.</string>
     <string name="send_too_large">Not sent: text over 1 MiB is not synced.</string>
     <string name="send_sensitive">Not sent: the copied text is marked as sensitive, such as a password.</string>
-    <string name="send_paused">Not sent: sharing is paused.</string>
+    <string name="send_paused">Not sent: sharing is paused. Resume it in clipsync or its notification.</string>
 
     <string name="about">About</string>
     <string name="back">Back</string>
@@ -39,6 +42,10 @@
     <string name="rename_title">Device name</string>
     <string name="rename_hint">Other devices see this name.</string>
     <string name="rename_invalid">Use 1 to 64 bytes of text.</string>
+    <string name="share_clipboard">Share the clipboard</string>
+    <string name="share_clipboard_on">Sending to and receiving from paired devices</string>
+    <string name="share_clipboard_off">Paused: nothing is sent or received. Devices stay paired and connected.</string>
+    <string name="sharing_paused">Sharing paused</string>
 
     <string name="paired_devices">Paired devices</string>
     <string name="no_devices_title">No paired devices yet</string>

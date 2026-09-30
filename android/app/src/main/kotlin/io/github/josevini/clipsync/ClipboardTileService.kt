@@ -13,7 +13,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-/** The "Send clipboard" Quick Settings tile: lit while a paired device is connected; tapping it sends the clipboard. */
+/** The "Send clipboard" Quick Settings tile: lit while sharing with a connected paired device; tapping it sends the clipboard. */
 class ClipboardTileService : TileService() {
     private val scope = MainScope()
     private var watching: Job? = null
@@ -68,6 +68,6 @@ fun sendClipboardIntent(context: Context): PendingIntent =
         PendingIntent.FLAG_IMMUTABLE,
     )
 
-/** Active while a paired device is connected, so a tap would send; inactive otherwise, though a tap still says why. */
+/** Active while sharing and a paired device is connected, so a tap would send; inactive otherwise, though a tap still says why. */
 internal fun tileState(status: NodeStatus?): Int =
-    if (status?.devices.orEmpty().any { it.connected }) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+    if (status != null && !status.paused && status.devices.any { it.connected }) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE

@@ -60,6 +60,12 @@ class ClipboardSendTest {
         assertEquals(Tile.STATE_INACTIVE, tileState(null))
     }
 
+    @Test
+    fun `the tile is inactive while sharing is paused`() {
+        val pc = DeviceStatus(id = "a".repeat(64), name = "pc", connected = true)
+        assertEquals(Tile.STATE_INACTIVE, tileState(status(pc).copy(paused = true)))
+    }
+
     private fun status(vararg devices: DeviceStatus) =
         NodeStatus(id = "c".repeat(64), name = "phone", port = 47823, pairing = false, devices = devices.toList())
 }

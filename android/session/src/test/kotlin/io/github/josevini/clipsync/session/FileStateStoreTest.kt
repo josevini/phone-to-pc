@@ -21,10 +21,17 @@ class FileStateStoreTest {
             SavedState(
                 lamport = 42,
                 paired = listOf(SavedDevice("ab".repeat(32), "Meu PC", listOf(SavedAddress("fd00::2", 47823)))),
+                paused = true,
             )
         FileStateStore(file).save(state)
         assertEquals(state, FileStateStore(file).load())
         assertEquals(listOf("state.json"), dir.list()!!.toList())
+    }
+
+    @Test
+    fun `a file saved without the paused flag is not paused`() {
+        file.writeText("""{"lamport": 3, "paired": []}""")
+        assertEquals(SavedState(lamport = 3), FileStateStore(file).load())
     }
 
     @Test

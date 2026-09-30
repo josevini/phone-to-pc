@@ -26,6 +26,8 @@ private const val CHANNEL = "sync"
 private const val NOTIFICATION_ID = 1
 private const val ACTION_STOP = "io.github.josevini.clipsync.STOP"
 private const val ACTION_RESTART = "io.github.josevini.clipsync.RESTART"
+private const val ACTION_PAUSE = "io.github.josevini.clipsync.PAUSE"
+private const val ACTION_RESUME = "io.github.josevini.clipsync.RESUME"
 
 /**
  * Keeps the node running while the app is in the background: connections to paired devices stay open, and what
@@ -39,9 +41,10 @@ class SyncService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        startForeground(NOTIFICATION_ID, notification(connected = 0), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        startForeground(NOTIFICATION_ID, notification(connected = 0, paused = false), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         try {
             startNode()
+            node?.let(::updateNotification)
         } catch (e: Exception) {
             Log.e("clipsync", "could not start", e)
             stopSelf()
@@ -62,6 +65,14 @@ class SyncService : LifecycleService() {
             ACTION_RESTART -> {
                 stopNode()
                 startNode()
+            }
+
+            ACTION_PAUSE -> {
+                node?.setPaused(true)
+            }
+
+            ACTION_RESUME -> {
+                node?.setPaused(false)
             }
         }
         return START_STICKY
@@ -115,10 +126,15 @@ class SyncService : LifecycleService() {
     ) {
         Sync.publish(node, event)
         val engine = (event as? NodeEvent.Engine)?.event
-        if (engine is EngineEvent.PeerConnected || engine is EngineEvent.PeerDisconnected) {
-            val connected = node.status().devices.count { it.connected }
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(connected))
+        if (engine is EngineEvent.PeerConnected || engine is EngineEvent.PeerDisconnected || event is NodeEvent.PausedChanged) {
+            updateNotification(node)
         }
+    }
+
+    private fun updateNotification(node: Node) {
+        val status = node.status()
+        val connected = status.devices.count { it.connected }
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(connected, status.paused))
     }
 
     /** Clips from other devices; writing the clipboard in the background is allowed, reading it is not. */
@@ -132,32 +148,44 @@ class SyncService : LifecycleService() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun notification(connected: Int): Notification {
+    private fun notification(
+        connected: Int,
+        paused: Boolean,
+    ): Notification {
         val open =
             PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val stop =
-            PendingIntent.getService(
-                this,
-                0,
-                Intent(this, SyncService::class.java).setAction(ACTION_STOP),
-                PendingIntent.FLAG_IMMUTABLE,
-            )
         val text =
             if (connected == 0) {
                 getString(R.string.notification_waiting)
             } else {
                 resources.getQuantityString(R.plurals.notification_connected, connected, connected)
             }
-        return Notification
-            .Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.notification_title))
-            .setContentText(text)
-            .setContentIntent(open)
-            .setOngoing(true)
-            .addAction(Notification.Action.Builder(null, getString(R.string.send_clipboard), sendClipboardIntent(this)).build())
-            .addAction(Notification.Action.Builder(null, getString(R.string.notification_stop), stop).build())
-            .build()
+        val builder =
+            Notification
+                .Builder(this, CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getString(if (paused) R.string.notification_title_paused else R.string.notification_title))
+                .setContentText(text)
+                .setContentIntent(open)
+                .setOngoing(true)
+        if (paused) {
+            builder.addAction(action(R.string.notification_resume, ACTION_RESUME))
+        } else {
+            builder
+                .addAction(Notification.Action.Builder(null, getString(R.string.send_clipboard), sendClipboardIntent(this)).build())
+                .addAction(action(R.string.notification_pause, ACTION_PAUSE))
+        }
+        return builder.addAction(action(R.string.notification_stop, ACTION_STOP)).build()
+    }
+
+    /** A notification action that sends [action] to this service. */
+    private fun action(
+        title: Int,
+        action: String,
+    ): Notification.Action {
+        val intent =
+            PendingIntent.getService(this, 0, Intent(this, SyncService::class.java).setAction(action), PendingIntent.FLAG_IMMUTABLE)
+        return Notification.Action.Builder(null, getString(title), intent).build()
     }
 
     companion object {

@@ -31,7 +31,7 @@ Resumed: the clipboard is shared with the paired devices again.
 
 While paused, `clipsync status` says so. The pause lasts until you resume, across restarts
 of the daemon. What you copy while paused is not sent when you resume; copying it again
-sends it.
+sends it. On the phone, see [The Android app](android.md#pausing).
 
 ## Sending text from the terminal
 

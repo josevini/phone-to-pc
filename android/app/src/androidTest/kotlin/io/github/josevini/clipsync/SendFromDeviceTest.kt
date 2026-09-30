@@ -43,7 +43,13 @@ class SendFromDeviceTest {
         shell("input keyevent KEYCODE_WAKEUP")
         shell("wm dismiss-keyguard")
         val phoneEvents = LinkedBlockingQueue<NodeEvent>()
-        val phone = start(aliases[0], "phone", clipboard = {}, listener = { phoneEvents.add(it) })
+        lateinit var phone: Node
+        phone =
+            start(aliases[0], "phone", clipboard = {}) {
+                phoneEvents.add(it)
+                // What SyncService does with its node's events.
+                Sync.publish(phone, it)
+            }
         val pc = start(aliases[1], "pc", clipboard = { received.add(it) }, listener = {})
         val id = pc.status().id
         phone.pairWithUri("clipsync://pair?v=1&id=$id&name=pc&addr=127.0.0.1:${pc.port}&token=${pc.startPairing()}")
@@ -131,5 +137,27 @@ class SendFromDeviceTest {
         copy("copied")
         open(Intent(context, ClipboardSendActivity::class.java))
         assertEquals("copied", next())
+    }
+
+    @Test
+    fun nothingIsSentWhileSharingIsPaused() {
+        val phone = Sync.node!!
+        phone.setPaused(true)
+        while (Sync.status.value?.paused != true) Thread.sleep(20)
+        copy("copied while paused")
+        open(Intent(context, ClipboardSendActivity::class.java))
+        open(
+            Intent(context, SendActivity::class.java)
+                .setAction(Intent.ACTION_PROCESS_TEXT)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_PROCESS_TEXT, "selected while paused"),
+        )
+        // Give them the time a send takes, then show that the pipeline works: only the text sent after resuming arrives.
+        Thread.sleep(3_000)
+        phone.setPaused(false)
+        while (Sync.status.value?.paused != false) Thread.sleep(20)
+        copy("copied after resuming")
+        open(Intent(context, ClipboardSendActivity::class.java))
+        assertEquals("copied after resuming", next())
     }
 }

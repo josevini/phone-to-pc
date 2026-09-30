@@ -7,7 +7,7 @@ Current state: on Linux, the `clipsyncd` daemon syncs the clipboard with paired 
 with mDNS; the `clipsync` CLI pairs devices (QR/URI or code comparison), shows their status, sends text, pauses
 sharing and unpairs. The Android app pairs with a PC by scanning its QR code and writes the text the PC sends to the
 phone's clipboard; it sends text chosen in the text-selection menu or the share sheet, and the clipboard's text from a
-Quick Settings tile or the notification.
+Quick Settings tile or the notification. Either side can pause sharing without unpairing.
 
 ## Big picture
 
@@ -113,35 +113,35 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 - **`Tls`**: TLS 1.3 through JSSE, mutual certificates, ALPN `clipsync/1`, any certificate accepted and the peer's
   device ID read from its public key. The key manager takes the private key as a handle, so an Android Keystore key
   is used without leaving the Keystore.
-- **`FileStateStore`**: paired devices (with their addresses) and the Lamport counter in one JSON file, replaced
-  atomically; a damaged file is an error.
+- **`FileStateStore`**: paired devices (with their addresses), the Lamport counter and whether sharing is paused in
+  one JSON file, replaced atomically; a damaged file is an error.
 
 `app`:
 
 | File | Responsibility |
 |------|----------------|
-| `SyncService.kt` | Foreground service (`connectedDevice`): owns the `Node` and `Discovery`, writes received text to the clipboard on the main thread, keeps the notification's connected count and its Send clipboard and Stop actions |
+| `SyncService.kt` | Foreground service (`connectedDevice`): owns the `Node` and `Discovery`, writes received text to the clipboard on the main thread, keeps the notification's connected count and its actions: Send clipboard and Pause, or Resume while paused, and Stop |
 | `KeystoreIdentity.kt` | The EC P-256 key in the Android Keystore (alias `clipsync-identity`) and the self-signed certificate the Keystore issues for it |
 | `Discovery.kt` | `NsdManager`: advertises `_clipsync._tcp` with the core's instance name and TXT properties, and reports resolved services to the node through the core's `peer_from_service` (Android 14+ follows each service; older versions resolve one at a time) |
 | `Sync.kt` | The running node as the UI sees it: a status `StateFlow` and an event `SharedFlow` |
 | `SendActivity.kt` | "Send to devices" in the text-selection menu (`ACTION_PROCESS_TEXT`) and the share sheet (`ACTION_SEND` of `text/plain`): an activity with no window that hands the text to the node on a worker thread and reports the outcome in a toast |
-| `ClipboardSendActivity.kt` | "Send clipboard": a transparent activity that reads the clipboard once its window has focus (Android lets only the focused app read it, D7), skips text marked `EXTRA_IS_SENSITIVE`, sends the rest like `SendActivity` and finishes. Started on a locked phone, it waits behind the lock screen for that focus, and sends nothing if it comes more than a minute after the tap |
-| `ClipboardTileService.kt` | The "Send clipboard" Quick Settings tile: opens `ClipboardSendActivity`, and is lit while a paired device is connected |
-| `SendOutcome.kt` | `send`: sends text through the running node, only while a paired device is connected, and maps the core's `LocalChange` to what the user is told; `reportInBackground` sends on a worker thread and shows the outcome in a toast |
+| `ClipboardSendActivity.kt` | "Send clipboard": a transparent activity that reads the clipboard once its window has focus (Android lets only the focused app read it, D7), skips text marked `EXTRA_IS_SENSITIVE`, sends the rest like `SendActivity` and finishes. While sharing is paused it says so without reading the clipboard. Started on a locked phone, it waits behind the lock screen for that focus, and sends nothing if it comes more than a minute after the tap |
+| `ClipboardTileService.kt` | The "Send clipboard" Quick Settings tile: opens `ClipboardSendActivity`, and is lit while sharing with a connected paired device |
+| `SendOutcome.kt` | `send`: sends text through the running node, only while sharing with a connected paired device, and maps the core's `LocalChange` to what the user is told; `reportInBackground` sends on a worker thread and shows the outcome in a toast |
 | `Pairing.kt` | `PairingTracker`: follows one QR pairing through the node's events to success or a failure the user can act on |
 | `PairingInvite.kt` | This phone's own pairing code: the Wi-Fi and Ethernet addresses to put in it (IPv4 first), its QR modules drawn with ZXing, and `InviteTracker`, which follows pairing mode to a pairing or its end |
 | `QrDecoder.kt` | Reads a QR code from a camera frame's luminance plane with ZXing, dark on light or light on dark |
 | `DeviceName.kt` | The device name: the user's choice, or the phone's model cut to 64 bytes |
-| `ui/` | Compose screens: home (this device, battery optimisation, paired devices), scanning a pairing code (camera or pasted link), showing this phone's code, a device's page, about |
+| `ui/` | Compose screens: home (this device and whether it shares the clipboard, battery optimisation, paired devices), scanning a pairing code (camera or pasted link), showing this phone's code, a device's page, about |
 
 - The native library is `clipsync-ffi` built by `cargo-ndk` with the `android` Cargo profile, for `arm64-v8a` and
   `x86_64`, linked for 16 KB pages and packaged uncompressed. JNA, which the bindings call through, comes as its
   Android AAR.
 - The Keystore key signs the TLS handshakes through the platform's JSSE provider (Conscrypt) without leaving the
   Keystore.
-- Files: `state.json` (paired devices, their addresses, the Lamport counter) in the app's files directory; the device
-  name in shared preferences. Neither is backed up or transferred to another device, since the key they belong to
-  cannot be.
+- Files: `state.json` (paired devices, their addresses, the Lamport counter, whether sharing is paused) in the app's
+  files directory; the device name in shared preferences. Neither is backed up or transferred to another device, since
+  the key they belong to cannot be.
 - The node listens on port 47823, or on any free port if that one is taken; discovery advertises the port in use.
 
 ## `clipsyncd`: doing

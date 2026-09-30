@@ -24,6 +24,7 @@ class PairingTrackerTest {
     fun `pairing succeeds when that device is paired`() {
         assertNull(tracker.on(NodeEvent.PairingConnection(7u)))
         assertNull(tracker.on(NodeEvent.Engine(EngineEvent.Paired(PairedDevice(other, "someone else")))))
+        assertNull(tracker.on(NodeEvent.PausedChanged(paused = true)))
         assertEquals(PairingOutcome.Paired("book2"), tracker.on(NodeEvent.Engine(EngineEvent.Paired(PairedDevice(pc, "book2")))))
     }
 
