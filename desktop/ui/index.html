@@ -55,6 +55,40 @@
       </main>
     </div>
 
+    <div id="device" hidden>
+      <header class="bar">
+        <button id="device-back" tabindex="0" type="button" class="text">Back</button>
+        <h1 id="device-title"></h1>
+      </header>
+      <main>
+        <p id="device-error" class="error" role="alert" hidden></p>
+        <div class="group">
+          <div class="row">
+            <div>
+              <div class="title">Device ID</div>
+              <div id="device-full-id" class="subtitle id"></div>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <div class="title">Status</div>
+              <div id="device-state" class="subtitle"></div>
+            </div>
+          </div>
+          <button id="unpair" tabindex="0" type="button" class="row action danger">Unpair</button>
+        </div>
+
+        <section id="unpair-confirm" class="card" role="alertdialog" aria-labelledby="unpair-title" hidden>
+          <h2 id="unpair-title"></h2>
+          <p>The devices stop syncing, and both forget each other. Pair again to resume.</p>
+          <div class="buttons">
+            <button id="unpair-cancel" tabindex="0" type="button" class="text">Cancel</button>
+            <button id="unpair-yes" tabindex="0" type="button" class="primary danger">Unpair</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
     <div id="pair" hidden>
       <header class="bar">
         <button id="pair-cancel" tabindex="0" type="button" class="text">Cancel</button>

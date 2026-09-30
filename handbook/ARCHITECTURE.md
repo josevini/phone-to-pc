@@ -242,14 +242,14 @@ of its own, so the daemon's build never needs WebKitGTK, and it depends on `clip
 
 | File | Responsibility |
 |------|----------------|
-| `src-tauri/src/daemon.rs` | `watch`: subscribes to the daemon's status (`subscribe`) and reports each status, or `None` once while the daemon cannot be reached, trying again every 2 s; `request`: one request on its own connection |
+| `src-tauri/src/daemon.rs` | `watch`: subscribes to the daemon's status (`subscribe`) and reports each status, or `None` once while the daemon cannot be reached, trying again every 2 s; `request`: one request on its own connection; `unpair` |
 | `src-tauri/src/pairing.rs` | `Pairing`: one pairing on a connection of its own, as the daemon streams a pairing's progress on the connection that started it: showing this device's code (`pair_start`) or pairing with a link (`pair_uri`), reporting a code to compare, the device paired, a failure or the end of pairing mode, and sending the user's answer (`confirm`). Dropping it closes the connection, which closes the pairing mode it opened |
 | `src-tauri/src/qr.rs` | The pairing URI as QR code modules, for the window to draw |
 | `src-tauri/src/tray.rs` | `TrayView`: what the tray shows for a status (the summary line, the switch, a dimmed icon); the window gets it too |
-| `src-tauri/src/lib.rs` | The Tauri app: the tray and its menu; the `shown`, `set_paused`, `show_code`, `pair_with_link`, `confirm_pairing` and `stop_pairing` commands; the `shown` event sent to the window on every status and the `pairing` event on every step of a pairing; the window that hides instead of closing (which stops its pairing) and opens at launch unless `--hidden` |
-| `src/view.ts` | `home`: what the window shows for a status, as plain data |
+| `src-tauri/src/lib.rs` | The Tauri app: the tray and its menu; the `shown`, `set_paused`, `show_code`, `pair_with_link`, `confirm_pairing`, `stop_pairing` and `unpair` commands; the `shown` event sent to the window on every status and the `pairing` event on every step of a pairing; the window that hides instead of closing (which stops its pairing) and opens at launch unless `--hidden` |
+| `src/view.ts` | `home` and `devicePage`: what the home screen and a device's page show for a status, as plain data |
 | `src/pairing.ts` | `PairState`: where a pairing started from the window is, and how each `pairing` event moves it; the countdown, the QR code as an SVG path, and which text is a pairing link |
-| `src/main.ts` | Draws the home and pairing screens, only ever setting device names as text; sends the switch and the pairing actions to the app's commands, and moves keyboard focus with the screen |
+| `src/main.ts` | Draws the home, pairing and device screens, only ever setting device names as text; sends the switch and the pairing actions to the app's commands, and moves keyboard focus with the screen |
 
 - The window reaches Tauri through its global API (`app.withGlobalTauri`), typed in `src/tauri.d.ts`, so it ships no
   npm package; `tsc` compiles `src/` into `ui/js/`, which Tauri embeds.

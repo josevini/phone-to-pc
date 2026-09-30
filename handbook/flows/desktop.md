@@ -32,6 +32,13 @@ a pause made from the terminal.
 When the daemon is not running, the window says so and shows the command that starts it; the app finds the daemon
 once it starts.
 
+## A device's page
+
+Clicking a paired device opens its page: its full device ID (the device shows its first characters under its own
+name) and whether it is connected, and **Unpair**, which asks for confirmation, tells the device if it is connected,
+and forgets it, as `clipsync unpair` does (see [Unpairing](devices.md#unpairing)). **Back**, or Esc, returns to the
+list. When the device is unpaired from its side meanwhile, its page closes.
+
 ## Pairing
 
 Under the paired devices, two actions pair another device, as `clipsync pair` does (see [Pairing](pairing.md)):

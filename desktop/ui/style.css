@@ -7,6 +7,7 @@
   --primary: #3f51b5;
   --divider: #e2e2ea;
   --error: #b3261e;
+  --on-error: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +19,7 @@
     --primary: #b9c3ff;
     --divider: #33343b;
     --error: #f2b8b5;
+    --on-error: #601410;
   }
 }
 
@@ -338,4 +340,40 @@ input[type="text"] {
   background: var(--surface);
   color: var(--text);
   font: 14px ui-monospace, monospace;
+}
+
+button.row.device {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+button.row.device::after {
+  content: "›";
+  color: var(--muted);
+  font-size: 22px;
+}
+
+button.row.device:focus-visible {
+  outline-offset: -3px;
+}
+
+.row.action.danger,
+.text.danger {
+  color: var(--error);
+}
+
+.primary.danger {
+  background: var(--error);
+  color: var(--on-error);
+}
+
+.subtitle.id {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+}
+
+#unpair-confirm {
+  margin-top: 16px;
 }

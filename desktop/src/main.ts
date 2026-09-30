@@ -1,6 +1,6 @@
 import { answered, countdown, isPairingLink, onPairingEvent, type PairState, qrPath, showingCode } from "./pairing.ts";
 import type { Invite, PairingEvent, Shown } from "./status.ts";
-import { type Home, home } from "./view.ts";
+import { devicePage, type Home, home } from "./view.ts";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -27,6 +27,7 @@ const noDevices = element("no-devices");
 const error = element("error");
 
 let last: Home | null = null;
+let lastShown: Shown | null = null;
 
 /** Draws `model`. Device names come from other devices: they are only ever set as text. */
 function drawHome(model: Home): void {
@@ -42,8 +43,12 @@ function drawHome(model: Home): void {
   sharingHint.textContent = model.sharingHint;
   devices.replaceChildren(
     ...model.devices.map((device) => {
-      const row = document.createElement("li");
-      row.className = "row";
+      // One action per row: it opens the device's page.
+      const row = document.createElement("button");
+      row.type = "button";
+      row.tabIndex = 0;
+      row.className = "row device";
+      row.addEventListener("click", () => openDevice(device.id));
       const name = document.createElement("div");
       name.className = "title";
       name.textContent = device.name;
@@ -53,7 +58,9 @@ function drawHome(model: Home): void {
       const text = document.createElement("div");
       text.append(name, state);
       row.append(text);
-      return row;
+      const item = document.createElement("li");
+      item.append(row);
+      return item;
     }),
   );
   devices.hidden = model.devices.length === 0;
@@ -61,8 +68,10 @@ function drawHome(model: Home): void {
 }
 
 function showStatus(shown: Shown): void {
+  lastShown = shown;
   error.hidden = true;
   drawHome(home(shown));
+  drawDevice();
 }
 
 sharing.addEventListener("change", () => {
@@ -111,9 +120,15 @@ function setPair(state: PairState | null): void {
   }
 }
 
-function drawPair(): void {
-  homeView.hidden = pair !== null;
+/** Shows one screen: a pairing, a device's page, or home. */
+function drawViews(): void {
   pairView.hidden = pair === null;
+  deviceView.hidden = pair !== null || device === null;
+  homeView.hidden = pair !== null || device !== null;
+}
+
+function drawPair(): void {
+  drawViews();
   window.clearInterval(ticking);
   ticking = undefined;
   if (pair === null) return;
@@ -190,11 +205,82 @@ function cancel(): void {
   setPair(null);
 }
 
+// ---------------------------------------------------------------- a device's page
+
+const deviceView = element("device");
+const deviceTitle = element("device-title");
+const deviceFullId = element("device-full-id");
+const deviceState = element("device-state");
+const deviceError = element("device-error");
+const unpairButton = element("unpair");
+const unpairConfirm = element("unpair-confirm");
+const unpairTitle = element("unpair-title");
+
+/** The ID of the device whose page is open. */
+let device: string | null = null;
+let confirmingUnpair = false;
+
+function drawDevice(): void {
+  const page = device === null ? null : devicePage(lastShown?.status ?? null, device);
+  if (device !== null && page === null) {
+    // Unpaired here or by the other device: its page is gone.
+    closeDevice();
+    return;
+  }
+  drawViews();
+  if (page === null) return;
+  deviceTitle.textContent = page.name;
+  deviceFullId.textContent = page.id;
+  deviceState.textContent = page.state;
+  deviceState.className = page.connected ? "subtitle connected" : "subtitle";
+  unpairButton.hidden = confirmingUnpair;
+  unpairConfirm.hidden = !confirmingUnpair;
+  unpairTitle.textContent = `Unpair ${page.name}?`;
+}
+
+function openDevice(id: string): void {
+  device = id;
+  confirmingUnpair = false;
+  deviceError.hidden = true;
+  drawDevice();
+  element("device-back").focus();
+}
+
+function closeDevice(): void {
+  device = null;
+  confirmingUnpair = false;
+  drawDevice();
+  element("show-code").focus();
+}
+
+function askUnpair(ask: boolean): void {
+  confirmingUnpair = ask;
+  drawDevice();
+  (ask ? element("unpair-cancel") : unpairButton).focus();
+}
+
+element("device-back").addEventListener("click", closeDevice);
+unpairButton.addEventListener("click", () => askUnpair(true));
+element("unpair-cancel").addEventListener("click", () => askUnpair(false));
+element("unpair-yes").addEventListener("click", () => {
+  if (device === null) return;
+  invoke("unpair", { id: device })
+    .then(closeDevice)
+    .catch((e: unknown) => {
+      askUnpair(false);
+      deviceError.textContent = `Could not unpair: ${String(e)}`;
+      deviceError.hidden = false;
+    });
+});
+
 element("show-code").addEventListener("click", () => void showCode());
 element("enter-link").addEventListener("click", enterLink);
 element("pair-cancel").addEventListener("click", cancel);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") cancel();
+  if (event.key !== "Escape") return;
+  if (pair !== null) cancel();
+  else if (confirmingUnpair) askUnpair(false);
+  else if (device !== null) closeDevice();
 });
 
 link.addEventListener("input", drawPair);
@@ -224,6 +310,9 @@ await listen<PairingEvent>("pairing", (event) => {
   if (pair) setPair(onPairingEvent(pair, event.payload));
 });
 // Hiding the window stops the pairing: start over on the home screen.
-await listen("closed", () => setPair(null));
+await listen("closed", () => {
+  setPair(null);
+  if (device !== null) closeDevice();
+});
 await listen<Shown>("shown", (event) => showStatus(event.payload));
 showStatus(await invoke<Shown>("shown"));

@@ -58,6 +58,12 @@ async fn set_paused(app: State<'_, App>, paused: bool) -> Result<(), String> {
     pause(&app.socket, paused).await
 }
 
+/// Unpairs device `id`, telling it if it is connected.
+#[tauri::command]
+async fn unpair(app: State<'_, App>, id: String) -> Result<(), String> {
+    daemon::unpair(&app.socket, &id).await.map(drop).map_err(|e| format!("{e:#}"))
+}
+
 /// Opens pairing mode and returns this device's code; what happens next arrives as `pairing` events.
 #[tauri::command]
 async fn show_code(handle: AppHandle, app: State<'_, App>) -> Result<Invite, String> {
@@ -121,7 +127,8 @@ pub fn run() {
             show_code,
             pair_with_link,
             confirm_pairing,
-            stop_pairing
+            stop_pairing,
+            unpair
         ])
         .setup(move |app| {
             let items = build_tray(app.handle())?;

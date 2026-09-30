@@ -5,7 +5,7 @@ mod support;
 use std::path::Path;
 use std::time::Duration;
 
-use clipsync_desktop::daemon::{request, watch};
+use clipsync_desktop::daemon::{request, unpair, watch};
 use clipsyncd::ipc::{Reply, Request, StatusView};
 use support::Daemon;
 use tokio::sync::mpsc;
@@ -61,4 +61,24 @@ async fn a_request_without_a_daemon_is_an_error() {
     let tmp = tempfile::tempdir().unwrap();
     let err = request(&tmp.path().join("clipsync.sock"), &Request::Resume).await.unwrap_err();
     assert!(format!("{err:#}").contains("is it running?"), "{err:#}");
+}
+
+#[tokio::test]
+async fn unpairing_forgets_the_device_on_both_sides() {
+    let tmp = tempfile::tempdir().unwrap();
+    let a = Daemon::start(&tmp.path().join("a"), "alpha").await;
+    let b = Daemon::start(&tmp.path().join("b"), "beta").await;
+    let uri = b.handle.start_pairing().await.unwrap().uri;
+    a.handle.pair_with_uri(&uri).await.unwrap();
+    let b_id = b.handle.status().await.id;
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    while !a.handle.status().await.devices.iter().any(|d| d.connected) {
+        assert!(tokio::time::Instant::now() < deadline, "never connected");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    assert_eq!(unpair(&a.socket, &b_id.to_string()).await.unwrap(), "beta");
+    assert!(a.handle.status().await.devices.is_empty());
+    let err = unpair(&a.socket, &b_id.to_string()).await.unwrap_err();
+    assert!(format!("{err:#}").contains("no paired device"), "{err:#}");
 }

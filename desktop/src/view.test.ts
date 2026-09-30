@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { Device, Shown, Status } from "./status.ts";
-import { home } from "./view.ts";
+import { devicePage, home } from "./view.ts";
 
 function status(paused: boolean, devices: Device[]): Status {
   return { id: "86224755".padEnd(64, "0"), name: "book2", port: 47823, addrs: [], pairing: false, paused, devices };
@@ -23,8 +23,8 @@ test("a running daemon shows this device, the switch and the paired devices", ()
   assert.equal(model.sharing, true);
   assert.equal(model.sharingHint, "Sending to and receiving from paired devices");
   assert.deepEqual(model.devices, [
-    { name: "phone", state: "Connected", connected: true },
-    { name: "desktop", state: "Not connected", connected: false },
+    { id: "a".repeat(64), name: "phone", state: "Connected", connected: true },
+    { id: "b".repeat(64), name: "desktop", state: "Not connected", connected: false },
   ]);
   assert.equal(model.daemonDown, false);
   assert.equal(model.noDevices, false);
@@ -47,4 +47,19 @@ test("without a daemon there is no device and no switch", () => {
   assert.equal(model.sharing, null);
   assert.deepEqual(model.devices, []);
   assert.equal(model.noDevices, false);
+});
+
+test("a device's page shows its full ID and whether it is connected", () => {
+  const devices = [{ id: "a".repeat(64), name: "phone", connected: true }];
+  assert.deepEqual(devicePage(status(false, devices), "a".repeat(64)), {
+    name: "phone",
+    id: "a".repeat(64),
+    state: "Connected",
+    connected: true,
+  });
+});
+
+test("a device that is no longer paired has no page", () => {
+  assert.equal(devicePage(status(false, []), "a".repeat(64)), null);
+  assert.equal(devicePage(null, "a".repeat(64)), null);
 });
