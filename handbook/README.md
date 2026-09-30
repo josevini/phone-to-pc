@@ -29,6 +29,6 @@ the behaviour that was intended, and the code is the bug.
 - [Running the daemon](flows/running.md) — at login with systemd, by hand, and its
   notifications.
 - [The Android app](flows/android.md) — first run, pairing with a PC's QR code, receiving
-  the clipboard, sending selected text, devices.
+  the clipboard, sending text, devices.
 
 New user-facing flows get a page here as they ship.

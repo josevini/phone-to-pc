@@ -48,7 +48,7 @@
     <string name="battery_allow">Allow</string>
 
     <string name="tip_send_title">Send text from any app</string>
-    <string name="tip_send_text">Select text, then choose Send to devices in the menu that pops up.</string>
+    <string name="tip_send_text">Select text and choose Send to devices in the menu that pops up, or share it to clipsync.</string>
 
     <string name="pair_with_pc">Pair with a PC</string>
     <string name="pair_instructions">Run this on your PC, then point the camera at the code it shows.</string>

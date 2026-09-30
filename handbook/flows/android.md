@@ -2,7 +2,7 @@
 
 The app (Android 10 or newer) receives the clipboard of the PCs it is paired with: text
 copied on a PC appears in the phone's clipboard, ready to paste. Sending goes the other
-way from the text-selection menu (see [Sending selected text](#sending-selected-text)):
+way from the text-selection menu and the share sheet (see [Sending text](#sending-text)):
 Android lets only the app in the foreground read the clipboard, so the phone does not
 send what is copied on it by itself.
 
@@ -37,12 +37,19 @@ port 47823). Back or Cancel leaves the screen without pairing.
 Text copied on a paired PC is written to the phone's clipboard while the service runs,
 in the foreground or not (see [Syncing the clipboard](syncing.md) for what is synced).
 
-## Sending selected text
+## Sending text
 
-Select text in any app and choose **Send to devices** in the menu that pops up (it may be
-under ⋮). The text goes to the paired devices that are connected, which put it on their
-clipboard; the phone's own clipboard is left as it is. Once a device is paired, the main
-screen shows this as a tip under the device list. A short message says what happened:
+Two ways send text to the paired devices that are connected, which put it on their
+clipboard; the phone's own clipboard is left as it is:
+
+- Select text in any app and choose **Send to devices** in the menu that pops up (it may
+  be under ⋮).
+- Tap **Share** in any app that shares text (a page's link, a note, a place) and choose
+  **Send to devices**. When the app shares only a subject, such as a title, the subject is
+  sent. Images and files are not offered this target.
+
+Once a device is paired, the main screen shows this as a tip under the device list. A
+short message says what happened:
 
 - **Sent to N devices.**
 - Not sent, because no paired device is connected. Nothing is queued: send it again once

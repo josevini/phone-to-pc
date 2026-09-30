@@ -11,8 +11,8 @@ Android.
 - **Focused**: only the clipboard, with native Wayland support.
 
 > **Status: early development.** Linux devices pair and sync their clipboards; the
-> Android app pairs with them, receives their clipboard, and sends selected text from
-> the text-selection menu.
+> Android app pairs with them, receives their clipboard, and sends text from the
+> text-selection menu and the share sheet.
 
 ## Repository layout
 
