@@ -19,8 +19,11 @@ For a phone that can scan, or a PC where you can paste the URI.
    ```
 
 2. On the other device, scan the code or run `clipsync pair '<URI>'`. On a phone, tap
-   **Pair with a PC** in the app (see [The Android app](android.md)).
+   **Scan a pairing code** in the app (see [The Android app](android.md)).
 3. Both sides print `Paired with <name> (<short id>).` and start syncing.
+
+A phone shows its own code with **Show a pairing code**, for another phone to scan (see
+[Pairing two phones](android.md#pairing-two-phones)).
 
 The URI carries this device's ID, so the other device checks during the TLS handshake
 that it reached the right one; the one-time token proves the other device saw the code.

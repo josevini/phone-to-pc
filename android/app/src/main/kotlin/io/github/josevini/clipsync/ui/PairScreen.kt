@@ -95,7 +95,10 @@ private sealed interface PairState {
     ) : PairState
 }
 
-/** Pairs with a PC by scanning the QR code `clipsync pair` shows, or by pasting its link (spec §7.2). */
+/**
+ * Pairs by scanning the QR code another device shows (`clipsync pair` on a PC, [InviteScreen] on a phone), or by pasting
+ * its link (spec §7.2).
+ */
 @Composable
 fun PairScreen(onDone: () -> Unit) {
     var state by remember { mutableStateOf<PairState>(PairState.Scanning) }
@@ -127,7 +130,7 @@ fun PairScreen(onDone: () -> Unit) {
     }
 
     CollapsingScaffold(
-        title = stringResource(R.string.pair_with_pc),
+        title = stringResource(R.string.scan_code),
         expandable = false,
         navigation = { BackButton(onDone, stringResource(R.string.cancel)) },
     ) {

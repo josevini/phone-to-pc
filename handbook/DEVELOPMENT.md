@@ -94,7 +94,7 @@ The suites of `app`:
 
 | Suite | What it runs |
 |-------|--------------|
-| `DeviceNameTest`, `QrDecoderTest`, `PairingTrackerTest` (JVM) | The default device name; reading pairing QR codes from camera frames, including light-on-dark ones; how pairing events map to success or a failure |
+| `DeviceNameTest`, `QrDecoderTest`, `PairingTrackerTest`, `PairingInviteTest` (JVM) | The default device name; reading pairing QR codes from camera frames, including light-on-dark ones; how pairing events map to success or a failure; this phone's own code: its addresses, its QR modules read back, and how pairing mode ends |
 | `SendOutcomeTest`, `SendIntentTest`, `ClipboardSendTest` (JVM) | What sending tells the user; the text a selection or a share carries; sending the clipboard (skipping sensitive text, giving up on a tap made on a locked phone that was not unlocked within a minute) and the tile's state |
 | `KeystoreSyncTest` (on a device) | Two nodes with Keystore identities pair over loopback TLS and sync, through the native library |
 | `SendFromDeviceTest` (on a device) | The activities that send, opened as the user opens them, sending through the running node to a second node on loopback: selected text, shared text, and the clipboard, except text marked sensitive. It wakes and unlocks the device (a PIN stops it) and replaces what the device's clipboard holds |

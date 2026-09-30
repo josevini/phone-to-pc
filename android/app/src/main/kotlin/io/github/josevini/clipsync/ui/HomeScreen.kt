@@ -45,6 +45,7 @@ import io.github.josevini.clipsync.session.NodeStatus
 fun HomeScreen(
     status: NodeStatus?,
     onPair: () -> Unit,
+    onInvite: () -> Unit,
     onDevice: (String) -> Unit,
     onAbout: () -> Unit,
 ) {
@@ -87,10 +88,17 @@ fun HomeScreen(
                     GroupDivider(afterIcon = false)
                 }
                 GroupRow(
-                    title = stringResource(R.string.pair_with_pc),
+                    title = stringResource(R.string.scan_code),
                     icon = R.drawable.ic_qr_code_scanner,
                     titleColor = colors.primary,
                     onClick = onPair,
+                )
+                GroupDivider()
+                GroupRow(
+                    title = stringResource(R.string.show_code),
+                    icon = R.drawable.ic_qr_code,
+                    titleColor = colors.primary,
+                    onClick = onInvite,
                 )
             }
         }

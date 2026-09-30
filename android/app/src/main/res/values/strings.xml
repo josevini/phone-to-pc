@@ -41,7 +41,7 @@
 
     <string name="paired_devices">Paired devices</string>
     <string name="no_devices_title">No paired devices yet</string>
-    <string name="no_devices">Run this on your PC, then tap Pair with a PC and scan the code it shows.</string>
+    <string name="no_devices">Run this on your PC, then tap Scan a pairing code and point the camera at the code it shows. To pair two phones, one shows its code and the other scans it.</string>
     <string name="connected">Connected</string>
     <string name="not_connected">Not connected</string>
 
@@ -52,8 +52,8 @@
     <string name="tip_send_title">Send text from any app</string>
     <string name="tip_send_text">Select text and choose Send to devices, share it to clipsync, or copy it and tap Send clipboard in the notification or Quick Settings.</string>
 
-    <string name="pair_with_pc">Pair with a PC</string>
-    <string name="pair_instructions">Run this on your PC, then point the camera at the code it shows.</string>
+    <string name="scan_code">Scan a pairing code</string>
+    <string name="pair_instructions">Run this on your PC, or tap Show a pairing code on another phone, then point the camera at the code.</string>
     <string name="allow_camera">Allow the camera to scan</string>
     <string name="or">or</string>
     <string name="pairing_link">Paste the pairing link</string>
@@ -61,15 +61,25 @@
     <string name="invalid_code">That is not a clipsync pairing code.</string>
     <string name="pairing_with">Pairing with %1$s…</string>
     <string name="paired_with">Paired with %1$s</string>
-    <string name="paired_hint">Text copied on that device now appears in this phone\'s clipboard.</string>
+    <string name="paired_hint">Text copied or sent on that device now appears in this phone\'s clipboard.</string>
     <string name="pair_failed">Pairing failed</string>
     <string name="try_again">Try again</string>
-    <string name="failure_code_expired">This code was already used or has expired. Run clipsync pair again for a new one.</string>
-    <string name="failure_not_in_pairing_mode">The PC is no longer in pairing mode. Run clipsync pair again.</string>
-    <string name="failure_rejected">The PC declined the pairing.</string>
-    <string name="failure_incompatible">The PC runs an incompatible version of clipsync.</string>
-    <string name="failure_unreachable">Could not reach the PC. Check that both devices are on the same network and that its firewall allows clipsync.</string>
+    <string name="failure_code_expired">This code was already used or has expired. Show a new one: run clipsync pair again, or tap Show a pairing code again on the other phone.</string>
+    <string name="failure_not_in_pairing_mode">The other device no longer shows its code. Show a new one and scan it.</string>
+    <string name="failure_rejected">The other device declined the pairing.</string>
+    <string name="failure_incompatible">The other device runs an incompatible version of clipsync.</string>
+    <string name="failure_unreachable">Could not reach the other device. Check that both devices are on the same network and that a PC\'s firewall allows clipsync.</string>
     <string name="failure_connection_lost">The connection was lost while pairing. Try again.</string>
+
+    <string name="show_code">Show a pairing code</string>
+    <string name="invite_instructions">On the other phone, open clipsync, tap Scan a pairing code and point the camera at this code.</string>
+    <string name="invite_expires_in">The code works for %1$d:%2$02d more</string>
+    <string name="invite_paired_hint">The two devices now share the clipboard while they are connected.</string>
+    <string name="invite_expired">The code expired</string>
+    <string name="invite_expired_text">A code works for one pairing, for a short time. Show a new code to try again.</string>
+    <string name="invite_new_code">Show a new code</string>
+    <string name="invite_no_network">Connect to Wi-Fi</string>
+    <string name="invite_no_network_text">The other device reaches this phone over the local network. Connect both to the same Wi-Fi, then try again.</string>
 
     <string name="device_id">Device ID</string>
     <string name="device_id_hint">The PC shows its first characters, %1$s, in clipsync status.</string>

@@ -11,8 +11,9 @@ Android.
 - **Focused**: only the clipboard, with native Wayland support.
 
 > **Status: early development.** Linux devices pair and sync their clipboards; the
-> Android app pairs with them, receives their clipboard, and sends text from the
-> text-selection menu, the share sheet, and a Send clipboard tile and notification action.
+> Android app pairs with them and with other phones, receives their clipboard, and sends
+> text from the text-selection menu, the share sheet, and a Send clipboard tile and
+> notification action.
 
 ## Repository layout
 
@@ -37,8 +38,9 @@ clipsync pair 'clipsync://pair?…'       # on the other PC: pairs with it
 ```
 
 For the Android app, build and install it from `android/` (see
-[Development](handbook/DEVELOPMENT.md#android)), then tap **Pair with a PC** and scan
-the code `clipsync pair` shows.
+[Development](handbook/DEVELOPMENT.md#android)), then tap **Scan a pairing code** and scan
+the code `clipsync pair` shows. To pair two phones, tap **Show a pairing code** on one and
+scan it with the other.
 
 See the [handbook](handbook/README.md) for the flows, and
 [Development](handbook/DEVELOPMENT.md) for building, testing and trying it safely.

@@ -81,9 +81,10 @@ A thin layer that exports `clipsync-core` through UniFFI for the Android app. It
   `CoreError`.
 - `Engine` wraps the core's engine in a mutex, so Kotlin can call it from any thread; `poll_outputs` drains every
   queued output in one call.
-- Free functions cover what the app needs outside a session: `parse_pair_uri`, `format_sas`, `device_id_from_spki`,
-  `short_id`, `is_valid_name`, `txt_properties`, `peer_from_service`, `instance_name` and the discovery and transport
-  constants.
+- Free functions cover what the app needs outside a session: `parse_pair_uri`, `format_pair_uri` (which parses what
+  it builds, so it never returns a URI other devices reject), `format_sas`, `device_id_from_spki`, `short_id`,
+  `is_valid_name`, `txt_properties`, `peer_from_service`, `instance_name`, `pairing_window_ms` and the discovery and
+  transport constants.
 - `uniffi.toml` puts the bindings in the Kotlin package `io.github.josevini.clipsync.core`; the crate's
   `uniffi-bindgen` binary generates them from the built library.
 
@@ -128,9 +129,10 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
 | `ClipboardTileService.kt` | The "Send clipboard" Quick Settings tile: opens `ClipboardSendActivity`, and is lit while a paired device is connected |
 | `SendOutcome.kt` | `send`: sends text through the running node, only while a paired device is connected, and maps the core's `LocalChange` to what the user is told; `reportInBackground` sends on a worker thread and shows the outcome in a toast |
 | `Pairing.kt` | `PairingTracker`: follows one QR pairing through the node's events to success or a failure the user can act on |
+| `PairingInvite.kt` | This phone's own pairing code: the Wi-Fi and Ethernet addresses to put in it (IPv4 first), its QR modules drawn with ZXing, and `InviteTracker`, which follows pairing mode to a pairing or its end |
 | `QrDecoder.kt` | Reads a QR code from a camera frame's luminance plane with ZXing, dark on light or light on dark |
 | `DeviceName.kt` | The device name: the user's choice, or the phone's model cut to 64 bytes |
-| `ui/` | Compose screens: home (this device, battery optimisation, paired devices), pairing (camera or pasted link), a device's page, about |
+| `ui/` | Compose screens: home (this device, battery optimisation, paired devices), scanning a pairing code (camera or pasted link), showing this phone's code, a device's page, about |
 
 - The native library is `clipsync-ffi` built by `cargo-ndk` with the `android` Cargo profile, for `arm64-v8a` and
   `x86_64`, linked for 16 KB pages and packaged uncompressed. JNA, which the bindings call through, comes as its

@@ -19,6 +19,7 @@ import io.github.josevini.clipsync.Sync
 
 private const val HOME = "home"
 private const val PAIR = "pair"
+private const val INVITE = "invite"
 private const val ABOUT = "about"
 private const val DEVICE = "device:"
 
@@ -34,6 +35,10 @@ fun App() {
             PairScreen(onDone = home)
         }
 
+        route == INVITE -> {
+            InviteScreen(onDone = home)
+        }
+
         route == ABOUT -> {
             AboutScreen(onBack = home)
         }
@@ -44,7 +49,13 @@ fun App() {
         }
 
         else -> {
-            HomeScreen(status, onPair = { route = PAIR }, onDevice = { route = DEVICE + it }, onAbout = { route = ABOUT })
+            HomeScreen(
+                status,
+                onPair = { route = PAIR },
+                onInvite = { route = INVITE },
+                onDevice = { route = DEVICE + it },
+                onAbout = { route = ABOUT },
+            )
         }
     }
 }

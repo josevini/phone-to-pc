@@ -23,14 +23,29 @@ under **This device** to change it.
 ## Pairing with a PC
 
 1. On the PC, run `clipsync pair`; it shows a QR code for two minutes.
-2. In the app, tap **Pair with a PC** and point the camera at the code. Without a
+2. In the app, tap **Scan a pairing code** and point the camera at the code. Without a
    camera, paste the `clipsync://pair?…` link printed under the code instead.
 3. The app shows **Paired with *name***, and the PC prints `Paired with <phone name>`.
 
 When pairing fails, the app says why and what to do: the code was already used or
-expired (run `clipsync pair` again), the PC left pairing mode, or the PC could not be
-reached (both devices must be on the same network, and the PC's firewall must allow TCP
+expired (show a new one), the other device left pairing mode, or it could not be
+reached (both devices must be on the same network, and a PC's firewall must allow TCP
 port 47823). Back or Cancel leaves the screen without pairing.
+
+## Pairing two phones
+
+One phone shows a code and the other scans it:
+
+1. On one phone, tap **Show a pairing code**. It shows a QR code with how long it still
+   works (two minutes, for one pairing) and keeps the screen on meanwhile.
+2. On the other, tap **Scan a pairing code** and point the camera at it.
+3. Both show **Paired with *name***.
+
+The code holds the phone's addresses on Wi-Fi (or Ethernet), not on mobile data, so
+both phones must be on the same network; without Wi-Fi the app asks to connect to it.
+When the code expires, **Show a new code** opens pairing mode again. Back or Cancel
+closes pairing mode. While the code is shown, a PC that asks to pair by comparing codes
+(`clipsync pair <address>`) is declined: scan the code instead.
 
 ## Syncing
 
