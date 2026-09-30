@@ -218,7 +218,7 @@ A Gradle build with JDK-only modules, so everything but the Android platform cod
   pairing mode closes it.
 - `subscribe` replies with the `status`, then sends a new `status` each time it changes (a device connects,
   disconnects, pairs or is unpaired, pairing mode opens or closes, sharing is paused or resumed), until the client
-  closes the connection. A client that also sends requests uses another connection for them.
+  closes the connection or the daemon stops. A client that also sends requests uses another connection for them.
 - `unpair` accepts a device name, full ID or unique ID prefix (4+ characters).
 
 ### Files

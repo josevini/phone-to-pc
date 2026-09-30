@@ -213,6 +213,16 @@ async fn a_subscriber_gets_the_status_then_each_change() {
 }
 
 #[tokio::test]
+async fn a_subscription_ends_when_the_daemon_stops() {
+    let a = Node::start("alpha").await;
+    let mut watcher = a.client().await;
+    assert!(matches!(watcher.request(&Request::Subscribe).await.unwrap(), Reply::Status { .. }));
+    a.handle.shutdown().await;
+    let end = tokio::time::timeout(Duration::from_secs(5), watcher.next()).await.expect("the connection stayed open");
+    assert!(matches!(end, Ok(None)), "{end:?}");
+}
+
+#[tokio::test]
 async fn devices_are_unpaired_by_name_or_id_prefix() {
     let (a, b) = (Node::start("alpha").await, Node::start("beta").await);
     pair(&a, &b).await;

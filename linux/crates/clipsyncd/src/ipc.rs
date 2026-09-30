@@ -4,7 +4,8 @@
 //! streaming the pairing's progress on the same connection until it succeeds or fails;
 //! the client answers a `pairing_code` with `confirm`. Closing the connection that
 //! opened pairing mode closes pairing mode. `subscribe` replies with the status, then
-//! sends it again whenever it changes, until the client closes the connection.
+//! sends it again whenever it changes, until the client closes the connection or the daemon
+//! stops.
 
 use std::path::Path;
 
@@ -152,7 +153,13 @@ async fn serve_client(stream: UnixStream, daemon: DaemonHandle) {
 
     let mut opened_pairing_mode = false;
     let mut lines = BufReader::new(read).lines();
-    while let Ok(Some(line)) = lines.next_line().await {
+    loop {
+        // Stop serving once the daemon has stopped, so that its subscriptions end.
+        let line = tokio::select! {
+            line = lines.next_line() => line,
+            _ = daemon.stopped() => break,
+        };
+        let Ok(Some(line)) = line else { break };
         let request: Request = match serde_json::from_str(&line) {
             Ok(request) => request,
             Err(e) => {
@@ -257,7 +264,11 @@ async fn forward_status(
     out: mpsc::UnboundedSender<Reply>,
 ) {
     loop {
-        let status: StatusView = match events.recv().await {
+        let event = tokio::select! {
+            event = events.recv() => event,
+            _ = daemon.stopped() => return,
+        };
+        let status: StatusView = match event {
             Ok(DaemonEvent::StatusChanged(status)) => status.into(),
             Ok(_) => continue,
             // Some changes were missed: the current status covers them.
