@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.net.InetAddress
+import java.util.Locale
 
 class PairingInviteTest {
     private val phone = "ab".repeat(32)
@@ -74,4 +75,11 @@ class PairingInviteTest {
         id: String,
         name: String,
     ) = NodeEvent.Engine(EngineEvent.Paired(PairedDevice(id, name)))
+
+    @Test
+    fun `the time left reads as minutes and seconds without a leading zero`() {
+        assertEquals("1:58", countdown(118, Locale.ROOT))
+        assertEquals("0:05", countdown(5, Locale.ROOT))
+        assertEquals("2:00", countdown(120, Locale.ROOT))
+    }
 }

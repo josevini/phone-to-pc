@@ -13,6 +13,7 @@ import io.github.josevini.clipsync.core.SocketAddress
 import io.github.josevini.clipsync.session.NodeEvent
 import java.net.Inet4Address
 import java.net.InetAddress
+import java.util.Locale
 
 /** How this phone's own pairing code ended. */
 sealed interface InviteOutcome {
@@ -79,3 +80,9 @@ fun qrModules(text: String): BitMatrix =
         0,
         mapOf(EncodeHintType.MARGIN to 0, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M),
     )
+
+/** The time a code has left, as minutes and seconds ("1:58"), in the digits of [locale]. */
+fun countdown(
+    seconds: Long,
+    locale: Locale = Locale.getDefault(),
+): String = String.format(locale, "%d:%02d", seconds / 60, seconds % 60)

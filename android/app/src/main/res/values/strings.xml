@@ -73,7 +73,7 @@
 
     <string name="show_code">Show a pairing code</string>
     <string name="invite_instructions">On the other phone, open clipsync, tap Scan a pairing code and point the camera at this code.</string>
-    <string name="invite_expires_in">The code works for %1$d:%2$02d more</string>
+    <string name="invite_expires_in">The code works for %1$s more</string>
     <string name="invite_paired_hint">The two devices now share the clipboard while they are connected.</string>
     <string name="invite_expired">The code expired</string>
     <string name="invite_expired_text">A code works for one pairing, for a short time. Show a new code to try again.</string>

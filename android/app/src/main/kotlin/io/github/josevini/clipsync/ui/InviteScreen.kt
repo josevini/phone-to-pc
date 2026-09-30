@@ -46,6 +46,7 @@ import io.github.josevini.clipsync.core.EngineEvent
 import io.github.josevini.clipsync.core.PairUri
 import io.github.josevini.clipsync.core.formatPairUri
 import io.github.josevini.clipsync.core.pairingWindowMs
+import io.github.josevini.clipsync.countdown
 import io.github.josevini.clipsync.localNetworkAddresses
 import io.github.josevini.clipsync.pairingAddresses
 import io.github.josevini.clipsync.qrModules
@@ -203,7 +204,7 @@ private fun Showing(
         QrCode(state.uri, Modifier.widthIn(max = 320.dp).fillMaxWidth())
         val seconds = (remaining + 999) / 1_000
         Text(
-            stringResource(R.string.invite_expires_in, seconds / 60, seconds % 60),
+            stringResource(R.string.invite_expires_in, countdown(seconds)),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
